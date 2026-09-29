@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>yespower WASM benchmark</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --text: #1d1f21; --muted: #6b7075;
+    --line: #e3e3df; --accent: #1f6feb; --good: #1a7f37; --bad: #cf222e; --best: #e8f3ea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111315; --panel: #1a1d20; --text: #e6e6e3; --muted: #9aa0a6;
+      --line: #2c3035; --accent: #4c8dff; --good: #3fb950; --bad: #f85149; --best: #1c2e22;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin-bottom: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
+  dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  label { color: var(--muted); }
+  select, input, button { font: inherit; color: inherit; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  input[type=number] { width: 5em; }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  .status { margin-top: 12px; color: var(--muted); min-height: 1.5em; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  tr.best td { background: var(--best); font-weight: 600; }
+  .ok { color: var(--good); } .fail { color: var(--bad); }
+  .note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+  .summary { font-size: 17px; margin: 12px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tidecoin yespower in WebAssembly</h1>
+  <p class="sub">yespower 1.0, N=2048, r=8. Each Web Worker runs its own module; results are sustained hashes per second.</p>
+
+  <section>
+    <h2>This device</h2>
+    <dl id="device"></dl>
+  </section>
+
+  <section>
+    <h2>Benchmark</h2>
+    <div class="row">
+      <label for="mode">Mode</label>
+      <select id="mode">
+        <option value="auto">Auto sweep (find the best setup)</option>
+        <option value="custom">Custom</option>
+      </select>
+      <span id="custom" class="row" hidden>
+        <label for="workers">Workers</label><input id="workers" type="number" min="1" max="256">
+        <label for="lanes">Lanes</label>
+        <select id="lanes"><option>1</option><option>2</option></select>
+      </span>
+      <label for="build">Build</label>
+      <select id="build">
+        <option value="auto" selected>Auto (measure)</option>
+        <option value="simd">SIMD128</option>
+        <option value="scalar">Scalar</option>
+      </select>
+      <label for="seconds">Seconds per setup</label>
+      <select id="seconds"><option value="5">5</option><option value="10" selected>10</option><option value="20">20</option><option value="60">60</option></select>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="start" class="primary">Start</button>
+      <button id="stop" disabled>Stop</button>
+      <button id="copy" disabled>Copy results (JSON)</button>
+    </div>
+    <div id="status" class="status"></div>
+    <p class="note">Keep this tab visible; browsers throttle hidden tabs. On phones, plug in the charger: sustained numbers depend on heat.</p>
+  </section>
+
+  <section>
+    <h2>Results</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Setup</th><th>Build</th><th>Workers</th><th>Lanes</th><th>Total H/s</th><th>Per worker</th><th>Check</th></tr></thead>
+        <tbody id="results"></tbody>
+      </table>
+    </div>
+    <p id="summary" class="summary"></p>
+  </section>
+</main>
+
+<script type="module">
+// WASM SIMD128 feature test (a function using v128 ops), from wasm-feature-detect.
+// Supported is not the same as faster: on Apple Silicon (and ARM generally) the
+// scalar build's 64-bit integer pwxform beats SIMD128, which the browser lowers to
+// NEON (M3 Max: Chrome +12%, Safari +17% on all cores). So "auto" measures both.
+const SIMD_PROBE = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]);
+const simd = WebAssembly.validate(SIMD_PROBE);
+const cores = navigator.hardwareConcurrency || 1;
+// Safari gives only 8 WASM memories per process guard-page bounds checks; further
+// workers check every access (-29% each on an M3 Max). On a cross-origin-isolated
+// page with pkg-shared-* built, all workers share one memory instead.
+const isolated = self.crossOriginIsolated === true;
+const $ = (id) => document.getElementById(id);
+const results = [];
+let calibration = null;
+let stopRequested = false;
+let hiddenDuringRun = false;
+
+const device = {
+  userAgent: navigator.userAgent,
+  logicalCores: cores,
+  deviceMemoryGB: navigator.deviceMemory ?? null,
+  wasmSimd: simd,
+  crossOriginIsolated: isolated,
+};
+$("device").innerHTML = [
+  ["Logical cores", cores],
+  ["WASM SIMD128", simd ? "yes" : "no (scalar build only)"],
+  ["Worker memory", isolated ? "shared (cross-origin isolated)" : "one per worker (page not cross-origin isolated)"],
+  ["Memory", navigator.deviceMemory ? `${navigator.deviceMemory} GB (reported)` : "not reported"],
+  ["Browser", navigator.userAgent],
+].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+$("workers").value = cores;
+if (!simd) { $("build").value = "scalar"; $("build").disabled = true; }
+$("mode").onchange = () => { $("custom").hidden = $("mode").value !== "custom"; };
+document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenDuringRun = true; });
+
+const fmt = (x) => x >= 1000 ? `${(x / 1000).toFixed(2)} k` : x.toFixed(0);
+const status = (text) => { $("status").textContent = text; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function setups() {
+  if ($("mode").value === "custom") {
+    return [{ workers: Math.max(1, Number($("workers").value) || 1), lanes: Number($("lanes").value) }];
+  }
+  const counts = [...new Set([1, Math.max(1, Math.floor(cores / 4)), Math.max(1, Math.floor(cores / 2)), cores])];
+  return counts.flatMap((workers) => [1, 2].map((lanes) => ({ workers, lanes })));
+}
+
+// One compiled module and shared memory per build, created on first use and kept for
+// the page's lifetime (null when not isolated or pkg-shared-* was not built).
+const sharedBuilds = {};
+async function sharedBuild(useSimd) {
+  const name = useSimd ? "simd" : "scalar";
+  if (!isolated) return null;
+  if (!(name in sharedBuilds)) {
+    try {
+      const module = await WebAssembly.compileStreaming(fetch(`./pkg-shared-${name}/tidecoin_yespower_bg.wasm`));
+      sharedBuilds[name] = { module, memory: null };
+    } catch {
+      sharedBuilds[name] = null;
+    }
+  }
+  return sharedBuilds[name];
+}
+
+async function runSetup({ workers, lanes }, seconds, useSimd) {
+  const pool = Array.from({ length: workers }, () => new Worker(new URL("./worker.js", import.meta.url), { type: "module" }));
+  const next = (w) => new Promise((resolve, reject) => {
+    w.onmessage = ({ data }) => data.type === "error" ? reject(new Error(data.message)) : resolve(data);
+    w.onerror = (e) => reject(new Error(e.message || "worker failed to load"));
+  });
+  const shared = await sharedBuild(useSimd);
+  const init = (w) => { const p = next(w); w.postMessage({ type: "init", simd: useSimd, lanes, module: shared?.module, memory: shared?.memory }); return p; };
+  try {
+    let ready;
+    if (shared && !shared.memory) {
+      // The first worker creates the shared memory; the others join it.
+      const first = await init(pool[0]);
+      shared.memory = first.memory;
+      ready = [first, ...await Promise.all(pool.slice(1).map(init))];
+    } else {
+      ready = await Promise.all(pool.map(init));
+    }
+    const kat = ready.every((r) => r.kat);
+    const done = Promise.all(pool.map((w, id) => {
+      const p = next(w);
+      w.postMessage({ type: "run", id, warmupMs: 2000, ms: seconds * 1000 });
+      return p;
+    }));
+    const r = await done;
+    const total = r.reduce((sum, x) => sum + x.hashes / x.seconds, 0);
+    return { workers, lanes, total, perWorker: total / workers, kat, simd: ready[0].simd, shared: Boolean(shared) };
+  } finally {
+    // A shared memory outlives the workers: let each free its scratch and stack first.
+    if (shared) {
+      await Promise.all(pool.map((w) => { const p = next(w).catch(() => {}); w.postMessage({ type: "free" }); return Promise.race([p, sleep(2000)]); }));
+    }
+    pool.forEach((w) => w.terminate());
+  }
+}
+
+function render() {
+  const best = results.reduce((b, r) => (r.kat && (!b || r.total > b.total) ? r : b), null);
+  $("results").innerHTML = results.map((r, i) => `
+    <tr class="${r === best ? "best" : ""}">
+      <td>${i + 1}</td><td>${r.simd ? "SIMD128" : "scalar"}${r.shared ? " · shared" : ""}</td><td>${r.workers}</td><td>${r.lanes}</td>
+      <td>${fmt(r.total)}</td><td>${fmt(r.perWorker)}</td>
+      <td class="${r.kat ? "ok" : "fail"}">${r.kat ? "hash verified" : "WRONG HASH"}</td>
+    </tr>`).join("");
+  $("summary").textContent = best
+    ? `Best: ${best.workers} worker${best.workers > 1 ? "s" : ""} × ${best.lanes} lane${best.lanes > 1 ? "s" : ""} = ${fmt(best.total)} H/s`
+    : "";
+}
+
+$("start").onclick = async () => {
+  stopRequested = false;
+  hiddenDuringRun = document.hidden;
+  results.length = 0;
+  render();
+  $("start").disabled = true; $("stop").disabled = false; $("copy").disabled = true;
+  let wakeLock = null;
+  try { wakeLock = await navigator.wakeLock?.request("screen"); } catch { /* optional */ }
+  const seconds = Number($("seconds").value);
+  const plan = setups();
+  try {
+    let useSimd = simd && $("build").value !== "scalar";
+    calibration = null;
+    if (simd && $("build").value === "auto") {
+      status("Choosing the faster build: 1 worker on each (10 s)…");
+      const one = { workers: 1, lanes: 1 };
+      const [withSimd, scalar] = [await runSetup(one, 3, true), await runSetup(one, 3, false)];
+      useSimd = !(scalar.kat && scalar.total > withSimd.total);
+      calibration = { simd: withSimd.total, scalar: scalar.total, chosen: useSimd ? "simd" : "scalar" };
+      status(`Build: ${useSimd ? "SIMD128" : "scalar"} (1 worker: SIMD128 ${fmt(withSimd.total)}, scalar ${fmt(scalar.total)} H/s)`);
+      await sleep(3000);
+    }
+    for (const [i, s] of plan.entries()) {
+      if (stopRequested) break;
+      status(`Setup ${i + 1}/${plan.length}: ${s.workers} workers × ${s.lanes} lanes, ${useSimd ? "SIMD128" : "scalar"} (${seconds + 2} s)…`);
+      results.push(await runSetup(s, seconds, useSimd));
+      render();
+      if (i + 1 < plan.length && !stopRequested) { status("Cooling down 3 s…"); await sleep(3000); }
+    }
+    status(hiddenDuringRun ? "Done, but the tab was hidden during the run: numbers may be throttled." : "Done.");
+  } catch (error) {
+    status(`Error: ${error.message}`);
+  } finally {
+    wakeLock?.release?.();
+    $("start").disabled = false; $("stop").disabled = true; $("copy").disabled = results.length === 0;
+  }
+};
+$("stop").onclick = () => { stopRequested = true; status("Stopping after the current setup…"); };
+$("copy").onclick = async () => {
+  const text = JSON.stringify({ device, seconds: Number($("seconds").value), calibration, results }, null, 2);
+  try { await navigator.clipboard.writeText(text); status("Copied."); }
+  catch { status("Clipboard unavailable; results logged to the console."); console.log(text); }
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy,rustfmt
+          rustup default stable
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: test-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Format
+        if: runner.os == 'Linux'
+        run: cargo fmt --all --check
+      # Rust 1.98's clippy flags chunks_exact in existing kernel code; changing that
+      # code would change the x86-64 kernel's machine code, so that lint is allowed.
+      - name: Clippy
+        run: >-
+          cargo clippy --all-targets --workspace --locked --
+          -D warnings -A unknown_lints -A clippy::chunks_exact_to_as_chunks
+      - name: Test
+        run: cargo test --workspace --locked
+      - name: Self-test (release build)
+        shell: bash
+        run: |
+          cargo build --release --locked
+          ./target/release/tideminer self-test
+
+  wasm:
+    name: web package (wasm32)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
+          rustup default stable
+      - name: Build (SIMD128 and scalar)
+        run: |
+          cargo build --locked --release -p tidecoin-yespower --features web --target wasm32-unknown-unknown
+          RUSTFLAGS="" cargo build --locked --release -p tidecoin-yespower --features web --target wasm32-unknown-unknown

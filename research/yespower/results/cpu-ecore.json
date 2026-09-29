@@ -1,0 +1,862 @@
+{
+  "cpu": 16,
+  "hashes_per_trial": 1024,
+  "trials": 5,
+  "reference_headers": 275,
+  "variants": {
+    "gcc_sse2": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "dd397ea998f20e3d3692dc78c5f1de79eb5a28134b17d5d365ea2801c86caa01"
+    },
+    "gcc_native": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "dd397ea998f20e3d3692dc78c5f1de79eb5a28134b17d5d365ea2801c86caa01"
+    },
+    "gcc_native_parallel": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "5ad3822a823b5e9465e831c7e3ea119e5e3468cf8959b80c8a121ad8afbff223"
+    },
+    "gcc_native_noforce": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "3bee9b4610382176af907dad228a514902b450c041fdf746052668b9eb4f0b41"
+    },
+    "clang_native": {
+      "compiler": "Ubuntu clang version 20.1.2 (0ubuntu1)",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "dd397ea998f20e3d3692dc78c5f1de79eb5a28134b17d5d365ea2801c86caa01"
+    },
+    "gcc_native_stages": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "e64cc4e5fc89813ede2707562241caf8e3a2c15d16fe7c1db654823adccdb1d7"
+    }
+  },
+  "runs": [
+    {
+      "hashes": 1024,
+      "ns": 1359890569,
+      "hps": 753.001766,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_parallel",
+      "trial": 0
+    },
+    {
+      "hashes": 1024,
+      "ns": 1272970720,
+      "hps": 804.41756,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_noforce",
+      "trial": 0
+    },
+    {
+      "hashes": 1024,
+      "ns": 1318920575,
+      "hps": 776.392468,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        418494,
+        1982858,
+        20703174,
+        973676734,
+        320997047,
+        953199
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_stages",
+      "trial": 0
+    },
+    {
+      "hashes": 1024,
+      "ns": 1272130145,
+      "hps": 804.949088,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native",
+      "trial": 0
+    },
+    {
+      "hashes": 1024,
+      "ns": 1260037482,
+      "hps": 812.674238,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "clang_native",
+      "trial": 0
+    },
+    {
+      "hashes": 1024,
+      "ns": 1274856625,
+      "hps": 803.227579,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_sse2",
+      "trial": 0
+    },
+    {
+      "hashes": 1024,
+      "ns": 1361630993,
+      "hps": 752.039286,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "clang_native",
+      "trial": 1
+    },
+    {
+      "hashes": 1024,
+      "ns": 1280955285,
+      "hps": 799.403392,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native",
+      "trial": 1
+    },
+    {
+      "hashes": 1024,
+      "ns": 1270127082,
+      "hps": 806.218539,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_sse2",
+      "trial": 1
+    },
+    {
+      "hashes": 1024,
+      "ns": 1350235036,
+      "hps": 758.386483,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_parallel",
+      "trial": 1
+    },
+    {
+      "hashes": 1024,
+      "ns": 1299776581,
+      "hps": 787.827704,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        404392,
+        1966114,
+        20519422,
+        959211070,
+        316584481,
+        920413
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_stages",
+      "trial": 1
+    },
+    {
+      "hashes": 1024,
+      "ns": 1290007358,
+      "hps": 793.793922,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_noforce",
+      "trial": 1
+    },
+    {
+      "hashes": 1024,
+      "ns": 1256618523,
+      "hps": 814.88533,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        387166,
+        1872412,
+        20010106,
+        927464121,
+        305925939,
+        817655
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_stages",
+      "trial": 2
+    },
+    {
+      "hashes": 1024,
+      "ns": 1246931482,
+      "hps": 821.215933,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_sse2",
+      "trial": 2
+    },
+    {
+      "hashes": 1024,
+      "ns": 1418418004,
+      "hps": 721.931051,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_parallel",
+      "trial": 2
+    },
+    {
+      "hashes": 1024,
+      "ns": 1255605985,
+      "hps": 815.542465,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "clang_native",
+      "trial": 2
+    },
+    {
+      "hashes": 1024,
+      "ns": 1265416711,
+      "hps": 809.219596,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native",
+      "trial": 2
+    },
+    {
+      "hashes": 1024,
+      "ns": 1278498691,
+      "hps": 800.93942,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_noforce",
+      "trial": 2
+    },
+    {
+      "hashes": 1024,
+      "ns": 1420633914,
+      "hps": 720.80498,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_parallel",
+      "trial": 3
+    },
+    {
+      "hashes": 1024,
+      "ns": 1326914682,
+      "hps": 771.715027,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "clang_native",
+      "trial": 3
+    },
+    {
+      "hashes": 1024,
+      "ns": 1250870221,
+      "hps": 818.630089,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native",
+      "trial": 3
+    },
+    {
+      "hashes": 1024,
+      "ns": 1272706551,
+      "hps": 804.584528,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_noforce",
+      "trial": 3
+    },
+    {
+      "hashes": 1024,
+      "ns": 1301083796,
+      "hps": 787.036164,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_sse2",
+      "trial": 3
+    },
+    {
+      "hashes": 1024,
+      "ns": 1265143941,
+      "hps": 809.394067,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        390946,
+        1884011,
+        20098560,
+        933802683,
+        307958525,
+        849382
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_stages",
+      "trial": 3
+    },
+    {
+      "hashes": 1024,
+      "ns": 1374616285,
+      "hps": 744.935158,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_parallel",
+      "trial": 4
+    },
+    {
+      "hashes": 1024,
+      "ns": 1291229392,
+      "hps": 793.042666,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native",
+      "trial": 4
+    },
+    {
+      "hashes": 1024,
+      "ns": 1356338061,
+      "hps": 754.974021,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_sse2",
+      "trial": 4
+    },
+    {
+      "hashes": 1024,
+      "ns": 1378401606,
+      "hps": 742.889442,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "clang_native",
+      "trial": 4
+    },
+    {
+      "hashes": 1024,
+      "ns": 1323974311,
+      "hps": 773.428904,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        415583,
+        1996739,
+        20900211,
+        976420709,
+        323124341,
+        932815
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_stages",
+      "trial": 4
+    },
+    {
+      "hashes": 1024,
+      "ns": 1333882167,
+      "hps": 767.684002,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_noforce",
+      "trial": 4
+    }
+  ],
+  "source_sha256": {
+    "sha256.c": "d2f74117678bddf78f0788193fb780da6ae9ad223923443eba7fa1039253ceaa",
+    "yespower-platform.c": "77560357f86f7e92cff34ffd9d43c4f61cafcd85993df28467e8297b44323f9f",
+    "README": "f2ae5cd0ecc8f31dbb53edb12a68d321fad1600a9660ec5fd40eb39565fab2be",
+    "yespower-opt.c": "994a04c72e65fb8c09401a1bea6e500de92ec423199d28d836340a572a089076",
+    "yespower.h": "00a97176f86c4efc2a4ff8a093afd673fea94f1a26574a0c4b133cbbd525d6af",
+    "sha256.h": "0cb2a4d3103eaf468689e25e40ae60940bd6bc1b198ec0cfcf9c8b732ab30f5f",
+    "insecure_memzero.h": "5acd4cfc0d88b4c66b95bdfca905a0ae58d01d85a9ceb0f3efffa0bb2e8b6e1a",
+    "sysendian.h": "f5d412f711a814801431c6fa249fff982d667966ca4924e5ce14a35b80ae773d"
+  },
+  "cpuinfo": "processor\t: 0\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 183\nmodel name\t: 13th Gen Intel(R) Core(TM) i9-13980HX\nstepping\t: 1\nmicrocode\t: 0x12f\ncpu MHz\t\t: 3080.997\ncache size\t: 36864 KB\nphysical id\t: 0\nsiblings\t: 32\ncore id\t\t: 0\ncpu cores\t: 24\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 32\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities\nvmx flags\t: vnmi preemption_timer posted_intr invvpid ept_x_only ept_ad ept_1gb flexpriority apicv tsc_offset vtpr mtf vapic ept vpid unrestricted_guest vapic_reg vid ple shadow_vmcs ept_violation_ve ept_mode_based_exec tsc_scaling usr_wait_pause\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs eibrs_pbrsb rfds bhi vmscape\nbogomips\t: 4838.40\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 39 bits physical, 48 bits virtual\npower management:",
+  "summary": {
+    "gcc_sse2": {
+      "median_hps": 803.227579,
+      "min_hps": 754.974021,
+      "max_hps": 821.215933,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native": {
+      "median_hps": 804.949088,
+      "min_hps": 793.042666,
+      "max_hps": 818.630089,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native_parallel": {
+      "median_hps": 744.935158,
+      "min_hps": 720.80498,
+      "max_hps": 758.386483,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native_noforce": {
+      "median_hps": 800.93942,
+      "min_hps": 767.684002,
+      "max_hps": 804.584528,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "clang_native": {
+      "median_hps": 771.715027,
+      "min_hps": 742.889442,
+      "max_hps": 815.542465,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native_stages": {
+      "median_hps": 787.827704,
+      "min_hps": 773.428904,
+      "max_hps": 814.88533,
+      "median_stages_ns_per_hash": [
+        394.9140625,
+        1920.033203125,
+        20038.498046875,
+        936729.560546875,
+        309164.5322265625,
+        898.8408203125
+      ]
+    }
+  }
+}

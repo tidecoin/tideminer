@@ -1,0 +1,399 @@
+{
+  "cpu": 2,
+  "hashes_per_trial": 1024,
+  "trials": 3,
+  "reference_headers": 275,
+  "variants": {
+    "gcc_native": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "dd397ea998f20e3d3692dc78c5f1de79eb5a28134b17d5d365ea2801c86caa01"
+    },
+    "gcc_native_midstate": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "c2fef6651f6d72d2968fa0a8cf874c36e2ee0f273fc953d4c672e75722976c50"
+    },
+    "gcc_native_parallel": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "5ad3822a823b5e9465e831c7e3ea119e5e3468cf8959b80c8a121ad8afbff223"
+    },
+    "gcc_native_stages": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "e64cc4e5fc89813ede2707562241caf8e3a2c15d16fe7c1db654823adccdb1d7"
+    }
+  },
+  "runs": [
+    {
+      "hashes": 1024,
+      "ns": 676663216,
+      "hps": 1513.30821,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_midstate",
+      "trial": 0
+    },
+    {
+      "hashes": 1024,
+      "ns": 708676273,
+      "hps": 1444.947487,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        314239,
+        1522607,
+        16038003,
+        518218535,
+        171737252,
+        710635
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_stages",
+      "trial": 0
+    },
+    {
+      "hashes": 1024,
+      "ns": 743646836,
+      "hps": 1376.997723,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_parallel",
+      "trial": 0
+    },
+    {
+      "hashes": 1024,
+      "ns": 693321907,
+      "hps": 1476.947417,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native",
+      "trial": 0
+    },
+    {
+      "hashes": 1024,
+      "ns": 680282661,
+      "hps": 1505.256651,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native",
+      "trial": 1
+    },
+    {
+      "hashes": 1024,
+      "ns": 739316986,
+      "hps": 1385.062185,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_parallel",
+      "trial": 1
+    },
+    {
+      "hashes": 1024,
+      "ns": 660539362,
+      "hps": 1550.248265,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        284066,
+        1401461,
+        14913152,
+        483014465,
+        160180035,
+        616592
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_stages",
+      "trial": 1
+    },
+    {
+      "hashes": 1024,
+      "ns": 654997866,
+      "hps": 1563.363872,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_midstate",
+      "trial": 1
+    },
+    {
+      "hashes": 1024,
+      "ns": 773288128,
+      "hps": 1324.215338,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_parallel",
+      "trial": 2
+    },
+    {
+      "hashes": 1024,
+      "ns": 659155535,
+      "hps": 1553.502847,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native",
+      "trial": 2
+    },
+    {
+      "hashes": 1024,
+      "ns": 658979679,
+      "hps": 1553.917416,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_midstate",
+      "trial": 2
+    },
+    {
+      "hashes": 1024,
+      "ns": 659759668,
+      "hps": 1552.080325,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        289678,
+        1412828,
+        14936615,
+        482326371,
+        160024345,
+        627499
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "e22c3b69c27cd9f1213d8b112c24c7ff14eee8896d530e951e46d07d4c55a9c8",
+      "variant": "gcc_native_stages",
+      "trial": 2
+    }
+  ],
+  "source_sha256": {
+    "sha256.c": "d2f74117678bddf78f0788193fb780da6ae9ad223923443eba7fa1039253ceaa",
+    "yespower-platform.c": "77560357f86f7e92cff34ffd9d43c4f61cafcd85993df28467e8297b44323f9f",
+    "README": "f2ae5cd0ecc8f31dbb53edb12a68d321fad1600a9660ec5fd40eb39565fab2be",
+    "yespower-opt.c": "994a04c72e65fb8c09401a1bea6e500de92ec423199d28d836340a572a089076",
+    "yespower.h": "00a97176f86c4efc2a4ff8a093afd673fea94f1a26574a0c4b133cbbd525d6af",
+    "sha256.h": "0cb2a4d3103eaf468689e25e40ae60940bd6bc1b198ec0cfcf9c8b732ab30f5f",
+    "insecure_memzero.h": "5acd4cfc0d88b4c66b95bdfca905a0ae58d01d85a9ceb0f3efffa0bb2e8b6e1a",
+    "sysendian.h": "f5d412f711a814801431c6fa249fff982d667966ca4924e5ce14a35b80ae773d"
+  },
+  "cpuinfo": "processor\t: 0\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 183\nmodel name\t: 13th Gen Intel(R) Core(TM) i9-13980HX\nstepping\t: 1\nmicrocode\t: 0x12f\ncpu MHz\t\t: 2524.825\ncache size\t: 36864 KB\nphysical id\t: 0\nsiblings\t: 32\ncore id\t\t: 0\ncpu cores\t: 24\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 32\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities\nvmx flags\t: vnmi preemption_timer posted_intr invvpid ept_x_only ept_ad ept_1gb flexpriority apicv tsc_offset vtpr mtf vapic ept vpid unrestricted_guest vapic_reg vid ple shadow_vmcs ept_violation_ve ept_mode_based_exec tsc_scaling usr_wait_pause\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs eibrs_pbrsb rfds bhi vmscape\nbogomips\t: 4838.40\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 39 bits physical, 48 bits virtual\npower management:",
+  "summary": {
+    "gcc_native": {
+      "median_hps": 1505.256651,
+      "min_hps": 1476.947417,
+      "max_hps": 1553.502847,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native_midstate": {
+      "median_hps": 1553.917416,
+      "min_hps": 1513.30821,
+      "max_hps": 1563.363872,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native_parallel": {
+      "median_hps": 1376.997723,
+      "min_hps": 1324.215338,
+      "max_hps": 1385.062185,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native_stages": {
+      "median_hps": 1550.248265,
+      "min_hps": 1444.947487,
+      "max_hps": 1552.080325,
+      "median_stages_ns_per_hash": [
+        282.888671875,
+        1379.71484375,
+        14586.5380859375,
+        471693.8134765625,
+        156425.8154296875,
+        612.7919921875
+      ]
+    }
+  }
+}

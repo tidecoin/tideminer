@@ -1,0 +1,17 @@
+{
+  "cpu": 2,
+  "hashes": 2048,
+  "trials": 5,
+  "variants": {
+    "baseline": {
+      "median_hps": 1581.670694,
+      "min_hps": 1532.409136,
+      "max_hps": 1588.040918
+    },
+    "h0": {
+      "median_hps": 1540.468347,
+      "min_hps": 1482.85001,
+      "max_hps": 1547.594581
+    }
+  }
+}

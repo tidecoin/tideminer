@@ -1,0 +1,33 @@
+[package]
+name = "tidecoin-yespower"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94.1"
+description = "Pure-Rust Tidecoin yespower (1.0, N=2048, r=8) with WASM SIMD128 and multi-hash lanes"
+license = "MIT AND BSD-2-Clause"
+repository = "https://github.com/tidecoin/tideminer"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# wasm-bindgen API for browsers / Web Workers (build with wasm-pack).
+web = ["dep:wasm-bindgen"]
+
+[dependencies]
+sha2 = "0.10"
+wasm-bindgen = { version = "0.2", optional = true }
+
+[dev-dependencies]
+hex = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# The Openwall C reference: not for WebAssembly, and it does not build with MSVC.
+[target.'cfg(not(any(target_arch = "wasm32", windows)))'.dev-dependencies]
+rust-yespower = { version = "=0.3.0", features = ["std"] }
+
+# Measured: wasm-opt -O/-O3/-O4 make V8's code 2-5% slower; LLVM's output is kept.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

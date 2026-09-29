@@ -1,0 +1,1561 @@
+{
+  "cpu": 2,
+  "hashes_per_trial": 2048,
+  "trials": 5,
+  "reference_headers": 275,
+  "variants": {
+    "gcc_sse2": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "dd397ea998f20e3d3692dc78c5f1de79eb5a28134b17d5d365ea2801c86caa01"
+    },
+    "gcc_native": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "dd397ea998f20e3d3692dc78c5f1de79eb5a28134b17d5d365ea2801c86caa01"
+    },
+    "gcc_native_noforce": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "3bee9b4610382176af907dad228a514902b450c041fdf746052668b9eb4f0b41"
+    },
+    "gcc_sse2_noprefetch": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "cbb5df6cec8be655ca3848273dd939b59b17f135815e476b28fa392d2327ec68"
+    },
+    "gcc_native_noprefetch": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "cbb5df6cec8be655ca3848273dd939b59b17f135815e476b28fa392d2327ec68"
+    },
+    "gcc_native_midstate": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "c2fef6651f6d72d2968fa0a8cf874c36e2ee0f273fc953d4c672e75722976c50"
+    },
+    "clang_native": {
+      "compiler": "Ubuntu clang version 20.1.2 (0ubuntu1)",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "dd397ea998f20e3d3692dc78c5f1de79eb5a28134b17d5d365ea2801c86caa01"
+    },
+    "gcc_native_parallel": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "5ad3822a823b5e9465e831c7e3ea119e5e3468cf8959b80c8a121ad8afbff223"
+    },
+    "gcc_sse2_stages": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "e64cc4e5fc89813ede2707562241caf8e3a2c15d16fe7c1db654823adccdb1d7"
+    },
+    "gcc_native_stages": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "e64cc4e5fc89813ede2707562241caf8e3a2c15d16fe7c1db654823adccdb1d7"
+    },
+    "gcc_native_parallel_stats": {
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native",
+        "-DRESEARCH_STATS"
+      ],
+      "parity": true,
+      "transformed_source_sha256": "5ad3822a823b5e9465e831c7e3ea119e5e3468cf8959b80c8a121ad8afbff223"
+    }
+  },
+  "runs": [
+    {
+      "hashes": 2048,
+      "ns": 1411473659,
+      "hps": 1450.965795,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_midstate",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1416971199,
+      "hps": 1445.336364,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1692479795,
+      "hps": 1210.058759,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        268652544,
+        699238,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_parallel_stats",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1405447254,
+      "hps": 1457.187379,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_noprefetch",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1595825939,
+      "hps": 1283.347983,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_parallel",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1556527610,
+      "hps": 1315.749227,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_noforce",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1543982155,
+      "hps": 1326.440201,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "clang_native",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1547421751,
+      "hps": 1323.491801,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        694862,
+        3340351,
+        36008890,
+        1127493558,
+        378018816,
+        1548496
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2_stages",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1758724797,
+      "hps": 1164.480084,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2_noprefetch",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1747517844,
+      "hps": 1171.947976,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        826026,
+        4050268,
+        39221441,
+        1275608709,
+        425454752,
+        1988924
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_stages",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1773290010,
+      "hps": 1154.915433,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native",
+      "trial": 0
+    },
+    {
+      "hashes": 2048,
+      "ns": 1880343777,
+      "hps": 1089.162538,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_parallel",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1942266672,
+      "hps": 1054.438111,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_noprefetch",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1773924864,
+      "hps": 1154.502111,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        804762,
+        3887118,
+        40049060,
+        1295340071,
+        431627810,
+        1875931
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_stages",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1794056205,
+      "hps": 1141.547291,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        852693,
+        4131476,
+        41526619,
+        1306050743,
+        439147268,
+        1972574
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2_stages",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1703378993,
+      "hps": 1202.316107,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1670776149,
+      "hps": 1225.777613,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1936064234,
+      "hps": 1057.816143,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        268652544,
+        699238,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_parallel_stats",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1739015538,
+      "hps": 1177.677804,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_noforce",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1612239730,
+      "hps": 1270.282553,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2_noprefetch",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1755319829,
+      "hps": 1166.738942,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "clang_native",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1611466843,
+      "hps": 1270.891802,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_midstate",
+      "trial": 1
+    },
+    {
+      "hashes": 2048,
+      "ns": 1593105313,
+      "hps": 1285.539621,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2_noprefetch",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1544220013,
+      "hps": 1326.235888,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_noprefetch",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1595674427,
+      "hps": 1283.469839,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        715200,
+        3522309,
+        36188398,
+        1165861189,
+        387482753,
+        1614063
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_stages",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1543225719,
+      "hps": 1327.090376,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        686530,
+        3332309,
+        35858358,
+        1125113689,
+        376456489,
+        1504989
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2_stages",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1534515379,
+      "hps": 1334.623314,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1640243274,
+      "hps": 1248.595274,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_noforce",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1548577040,
+      "hps": 1322.504433,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_midstate",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1486518383,
+      "hps": 1377.715892,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1830784835,
+      "hps": 1118.645928,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        268652544,
+        699238,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_parallel_stats",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1716059093,
+      "hps": 1193.432096,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_parallel",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1507240986,
+      "hps": 1358.774091,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "clang_native",
+      "trial": 2
+    },
+    {
+      "hashes": 2048,
+      "ns": 1757896697,
+      "hps": 1165.028641,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        268652544,
+        699238,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_parallel_stats",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1492628274,
+      "hps": 1372.076381,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_noprefetch",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1461357422,
+      "hps": 1401.436753,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1453022393,
+      "hps": 1409.475869,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        651015,
+        3085708,
+        33029657,
+        1062099334,
+        352546925,
+        1338107
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_stages",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1517927051,
+      "hps": 1349.208448,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "clang_native",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1504873304,
+      "hps": 1360.911908,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_noforce",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1453608688,
+      "hps": 1408.907374,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_midstate",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1436573127,
+      "hps": 1425.614862,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1473137984,
+      "hps": 1390.229579,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        671772,
+        3217397,
+        34341694,
+        1074192809,
+        359046538,
+        1438685
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2_stages",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1445865881,
+      "hps": 1416.452264,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2_noprefetch",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1675625086,
+      "hps": 1222.230448,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_parallel",
+      "trial": 3
+    },
+    {
+      "hashes": 2048,
+      "ns": 1532868860,
+      "hps": 1336.056889,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "clang_native",
+      "trial": 4
+    },
+    {
+      "hashes": 2048,
+      "ns": 1434208801,
+      "hps": 1427.965021,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_noprefetch",
+      "trial": 4
+    },
+    {
+      "hashes": 2048,
+      "ns": 1453523431,
+      "hps": 1408.990014,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native",
+      "trial": 4
+    },
+    {
+      "hashes": 2048,
+      "ns": 1422221559,
+      "hps": 1440.000672,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2_noprefetch",
+      "trial": 4
+    },
+    {
+      "hashes": 2048,
+      "ns": 1497332274,
+      "hps": 1367.765883,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        655052,
+        3270622,
+        34047011,
+        1093888603,
+        363641394,
+        1535807
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_stages",
+      "trial": 4
+    },
+    {
+      "hashes": 2048,
+      "ns": 1711460299,
+      "hps": 1196.638918,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        268652544,
+        699238,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_parallel_stats",
+      "trial": 4
+    },
+    {
+      "hashes": 2048,
+      "ns": 1645005362,
+      "hps": 1244.980744,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_parallel",
+      "trial": 4
+    },
+    {
+      "hashes": 2048,
+      "ns": 1529515840,
+      "hps": 1338.985806,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_noforce",
+      "trial": 4
+    },
+    {
+      "hashes": 2048,
+      "ns": 1417150458,
+      "hps": 1445.153539,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        627959,
+        2997325,
+        32910848,
+        1032983149,
+        345979234,
+        1364542
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2_stages",
+      "trial": 4
+    },
+    {
+      "hashes": 2048,
+      "ns": 1442790102,
+      "hps": 1419.471895,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_sse2",
+      "trial": 4
+    },
+    {
+      "hashes": 2048,
+      "ns": 1438426571,
+      "hps": 1423.777926,
+      "scratch_bytes": 2197568,
+      "stages_ns": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612",
+      "variant": "gcc_native_midstate",
+      "trial": 4
+    }
+  ],
+  "source_sha256": {
+    "sha256.c": "d2f74117678bddf78f0788193fb780da6ae9ad223923443eba7fa1039253ceaa",
+    "yespower-platform.c": "77560357f86f7e92cff34ffd9d43c4f61cafcd85993df28467e8297b44323f9f",
+    "README": "f2ae5cd0ecc8f31dbb53edb12a68d321fad1600a9660ec5fd40eb39565fab2be",
+    "yespower-opt.c": "994a04c72e65fb8c09401a1bea6e500de92ec423199d28d836340a572a089076",
+    "yespower.h": "00a97176f86c4efc2a4ff8a093afd673fea94f1a26574a0c4b133cbbd525d6af",
+    "sha256.h": "0cb2a4d3103eaf468689e25e40ae60940bd6bc1b198ec0cfcf9c8b732ab30f5f",
+    "insecure_memzero.h": "5acd4cfc0d88b4c66b95bdfca905a0ae58d01d85a9ceb0f3efffa0bb2e8b6e1a",
+    "sysendian.h": "f5d412f711a814801431c6fa249fff982d667966ca4924e5ce14a35b80ae773d"
+  },
+  "cpuinfo": "processor\t: 0\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 183\nmodel name\t: 13th Gen Intel(R) Core(TM) i9-13980HX\nstepping\t: 1\nmicrocode\t: 0x12f\ncpu MHz\t\t: 957.378\ncache size\t: 36864 KB\nphysical id\t: 0\nsiblings\t: 32\ncore id\t\t: 0\ncpu cores\t: 24\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 32\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities\nvmx flags\t: vnmi preemption_timer posted_intr invvpid ept_x_only ept_ad ept_1gb flexpriority apicv tsc_offset vtpr mtf vapic ept vpid unrestricted_guest vapic_reg vid ple shadow_vmcs ept_violation_ve ept_mode_based_exec tsc_scaling usr_wait_pause\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs eibrs_pbrsb rfds bhi vmscape\nbogomips\t: 4838.40\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 39 bits physical, 48 bits virtual\npower management:",
+  "summary": {
+    "gcc_sse2": {
+      "median_hps": 1419.471895,
+      "min_hps": 1202.316107,
+      "max_hps": 1445.336364,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native": {
+      "median_hps": 1377.715892,
+      "min_hps": 1154.915433,
+      "max_hps": 1408.990014,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native_noforce": {
+      "median_hps": 1315.749227,
+      "min_hps": 1177.677804,
+      "max_hps": 1360.911908,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_sse2_noprefetch": {
+      "median_hps": 1285.539621,
+      "min_hps": 1164.480084,
+      "max_hps": 1440.000672,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native_noprefetch": {
+      "median_hps": 1372.076381,
+      "min_hps": 1054.438111,
+      "max_hps": 1457.187379,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native_midstate": {
+      "median_hps": 1408.907374,
+      "min_hps": 1270.891802,
+      "max_hps": 1450.965795,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "clang_native": {
+      "median_hps": 1336.056889,
+      "min_hps": 1166.738942,
+      "max_hps": 1358.774091,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_native_parallel": {
+      "median_hps": 1222.230448,
+      "min_hps": 1089.162538,
+      "max_hps": 1283.347983,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "gcc_sse2_stages": {
+      "median_hps": 1327.090376,
+      "min_hps": 1141.547291,
+      "max_hps": 1445.153539,
+      "median_stages_ns_per_hash": [
+        335.2197265625,
+        1627.10400390625,
+        17508.9638671875,
+        549371.9184570312,
+        183816.64501953125,
+        734.85791015625
+      ]
+    },
+    "gcc_native_stages": {
+      "median_hps": 1283.469839,
+      "min_hps": 1154.502111,
+      "max_hps": 1409.475869,
+      "median_stages_ns_per_hash": [
+        349.21875,
+        1719.87744140625,
+        17670.1162109375,
+        569268.1586914062,
+        189200.56298828125,
+        788.11669921875
+      ]
+    },
+    "gcc_native_parallel_stats": {
+      "median_hps": 1165.028641,
+      "min_hps": 1057.816143,
+      "max_hps": 1210.058759,
+      "median_stages_ns_per_hash": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

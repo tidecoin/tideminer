@@ -1,0 +1,151 @@
+name: Release
+
+# Push a tag like v0.2.0 to build every platform and publish a GitHub Release with
+# the archives, SHA256SUMS and the install scripts. workflow_dispatch builds the same
+# artifacts without publishing (download them from the run).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux:
+    name: linux-${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            target: x86_64-unknown-linux-musl
+          - arch: arm64
+            target: aarch64-unknown-linux-musl
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal --target ${{ matrix.target }}
+          rustup default stable
+      # Static musl binaries run on any distribution. Zig cross-compiles ring's C.
+      - name: Build (static)
+        run: |
+          pip install cargo-zigbuild
+          cargo zigbuild --release --locked --target ${{ matrix.target }}
+      - name: Self-test
+        run: |
+          bin=target/${{ matrix.target }}/release/tideminer
+          file "$bin"
+          if [ "${{ matrix.arch }}" = arm64 ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq qemu-user-static
+            qemu-aarch64-static "$bin" self-test
+          else
+            "$bin" self-test
+          fi
+      - name: Package
+        run: |
+          mkdir dist
+          tar -czf dist/tideminer-linux-${{ matrix.arch }}.tar.gz LICENSE LICENSE-YESPOWER -C target/${{ matrix.target }}/release tideminer
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-${{ matrix.arch }}
+          path: dist/*
+
+  macos:
+    name: macos-universal
+    runs-on: macos-14
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal --target aarch64-apple-darwin,x86_64-apple-darwin
+          rustup default stable
+      - name: Build both architectures
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+      # One file for Apple Silicon and Intel. Merging invalidates the linker's ad-hoc
+      # signatures, so sign again ad hoc (no certificate: Apple Silicon only requires
+      # a valid signature; curl downloads are not quarantined, so Gatekeeper is not
+      # involved).
+      - name: Universal binary, ad-hoc signature
+        run: |
+          lipo -create -output tideminer \
+            target/aarch64-apple-darwin/release/tideminer \
+            target/x86_64-apple-darwin/release/tideminer
+          codesign --force --sign - tideminer
+          codesign --verify --verbose tideminer
+          lipo -info tideminer
+      - name: Self-test
+        run: |
+          ./tideminer self-test
+          if arch -x86_64 /usr/bin/true 2>/dev/null; then
+            arch -x86_64 ./tideminer self-test
+          else
+            echo "Rosetta not installed on this runner: Intel slice not executed"
+          fi
+      - name: Package
+        run: |
+          mkdir dist
+          tar -czf dist/tideminer-macos-universal.tar.gz tideminer LICENSE LICENSE-YESPOWER
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos-universal
+          path: dist/*
+
+  windows:
+    name: windows-x86_64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - name: Build
+        run: cargo build --release --locked
+      - name: Self-test
+        run: .\target\release\tideminer.exe self-test
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path target\release\tideminer.exe, LICENSE, LICENSE-YESPOWER -DestinationPath dist\tideminer-windows-x86_64.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-x86_64
+          path: dist/*
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cp install.sh install.ps1 dist/
+          cd dist
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "tideminer $GITHUB_REF_NAME" \
+            --generate-notes

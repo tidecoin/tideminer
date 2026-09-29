@@ -1,0 +1,28 @@
+{
+  "files": {
+    "yespowertide_cuda_baseline.cu": {
+      "sha256": "c060a2fe464cb4cf31049a208835ed55cfd740abc42f04afff67fadce4e86370",
+      "lines": 3766
+    },
+    "yes.cu": {
+      "sha256": "54ce57bac452af4327f1995f8159d7800e75da85743e4f7c115ed8a09a303a30",
+      "lines": 4080
+    },
+    "yes1.cu": {
+      "sha256": "4658bce2165f154481f446f870659c89116e2ae6a7923b5e24cf2cd2097ad9ae",
+      "lines": 4058
+    },
+    "yes2.cu": {
+      "sha256": "f290acd810c7e11a3ba70dbfbb002314c44e38aef22062886a302c1c6b503e60",
+      "lines": 4653
+    },
+    "yespower_cpu_test.c": {
+      "sha256": "5e1bbdfb164740ede929ef60829ed63889a6eb6dc6ef937b224d749a30b76d05",
+      "lines": 162
+    }
+  },
+  "cuda_command": "nvcc -ccbin /usr/bin/g++-12 -O3 -arch=sm_90 -lineinfo -Xptxas=-v -cubin yes2.cu -o /tmp/yespower-yes2-sm90.cubin",
+  "cuda_version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2023 NVIDIA Corporation\nBuilt on Tue_Aug_15_22:02:13_PDT_2023\nCuda compilation tools, release 12.2, V12.2.140\nBuild cuda_12.2.r12.2/compiler.33191640_0\n",
+  "runtime": "Unavailable: NVIDIA driver not responding",
+  "perf_event_paranoid": "4"
+}

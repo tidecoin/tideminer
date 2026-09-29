@@ -1,0 +1,1253 @@
+{
+  "os": "Linux-6.14.0-37-generic-x86_64-with-glibc2.41",
+  "cpus": [
+    {
+      "cpu": 0,
+      "core_id": "0",
+      "siblings": "0-1",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "0-1",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "0-1",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "0-1",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 1,
+      "core_id": "0",
+      "siblings": "0-1",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "0-1",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "0-1",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "0-1",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 2,
+      "core_id": "4",
+      "siblings": "2-3",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "2-3",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "2-3",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "2-3",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 3,
+      "core_id": "4",
+      "siblings": "2-3",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "2-3",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "2-3",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "2-3",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 4,
+      "core_id": "8",
+      "siblings": "4-5",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "4-5",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "4-5",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "4-5",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 5,
+      "core_id": "8",
+      "siblings": "4-5",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "4-5",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "4-5",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "4-5",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 6,
+      "core_id": "12",
+      "siblings": "6-7",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "6-7",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "6-7",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "6-7",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 7,
+      "core_id": "12",
+      "siblings": "6-7",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "6-7",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "6-7",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "6-7",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 8,
+      "core_id": "16",
+      "siblings": "8-9",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "8-9",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "8-9",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "8-9",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 9,
+      "core_id": "16",
+      "siblings": "8-9",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "8-9",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "8-9",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "8-9",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 10,
+      "core_id": "20",
+      "siblings": "10-11",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "10-11",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "10-11",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "10-11",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 11,
+      "core_id": "20",
+      "siblings": "10-11",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "10-11",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "10-11",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "10-11",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 12,
+      "core_id": "24",
+      "siblings": "12-13",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "12-13",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "12-13",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "12-13",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 13,
+      "core_id": "24",
+      "siblings": "12-13",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "12-13",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "12-13",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "12-13",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 14,
+      "core_id": "28",
+      "siblings": "14-15",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "14-15",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "14-15",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "14-15",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 15,
+      "core_id": "28",
+      "siblings": "14-15",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "48K",
+          "shared_cpu_list": "14-15",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "32K",
+          "shared_cpu_list": "14-15",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "2048K",
+          "shared_cpu_list": "14-15",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 16,
+      "core_id": "32",
+      "siblings": "16",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "16",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "16",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "16-19",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 17,
+      "core_id": "33",
+      "siblings": "17",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "17",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "17",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "16-19",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 18,
+      "core_id": "34",
+      "siblings": "18",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "18",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "18",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "16-19",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 19,
+      "core_id": "35",
+      "siblings": "19",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "19",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "19",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "16-19",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 20,
+      "core_id": "36",
+      "siblings": "20",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "20",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "20",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "20-23",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 21,
+      "core_id": "37",
+      "siblings": "21",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "21",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "21",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "20-23",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 22,
+      "core_id": "38",
+      "siblings": "22",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "22",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "22",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "20-23",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 23,
+      "core_id": "39",
+      "siblings": "23",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "23",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "23",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "20-23",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 24,
+      "core_id": "40",
+      "siblings": "24",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "24",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "24",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "24-27",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 25,
+      "core_id": "41",
+      "siblings": "25",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "25",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "25",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "24-27",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 26,
+      "core_id": "42",
+      "siblings": "26",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "26",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "26",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "24-27",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 27,
+      "core_id": "43",
+      "siblings": "27",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "27",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "27",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "24-27",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 28,
+      "core_id": "44",
+      "siblings": "28",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "28",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "28",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "28-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 29,
+      "core_id": "45",
+      "siblings": "29",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "29",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "29",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "28-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 30,
+      "core_id": "46",
+      "siblings": "30",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "30",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "30",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "28-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    },
+    {
+      "cpu": 31,
+      "core_id": "47",
+      "siblings": "31",
+      "caches": [
+        {
+          "level": "1",
+          "type": "Data",
+          "size": "32K",
+          "shared_cpu_list": "31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "1",
+          "type": "Instruction",
+          "size": "64K",
+          "shared_cpu_list": "31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "8"
+        },
+        {
+          "level": "2",
+          "type": "Unified",
+          "size": "4096K",
+          "shared_cpu_list": "28-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "16"
+        },
+        {
+          "level": "3",
+          "type": "Unified",
+          "size": "36864K",
+          "shared_cpu_list": "0-31",
+          "coherency_line_size": "64",
+          "ways_of_associativity": "12"
+        }
+      ]
+    }
+  ]
+}

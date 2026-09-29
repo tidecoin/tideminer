@@ -1,0 +1,595 @@
+{
+  "cpu": 16,
+  "hashes": 2048,
+  "trials": 5,
+  "reference_headers": 275,
+  "runs": [
+    {
+      "trial": 0,
+      "variant": "tail",
+      "order": [
+        "baseline",
+        "tail"
+      ],
+      "rows": {
+        "baseline": {
+          "hashes": 2048,
+          "ns": 3118171387,
+          "hps": 656.7952,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        },
+        "tail": {
+          "hashes": 2048,
+          "ns": 2728969586,
+          "hps": 750.466407,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        }
+      },
+      "speedup": 1.1426185925232097
+    },
+    {
+      "trial": 0,
+      "variant": "lazy_v",
+      "order": [
+        "baseline",
+        "lazy_v"
+      ],
+      "rows": {
+        "baseline": {
+          "hashes": 2048,
+          "ns": 2911935605,
+          "hps": 703.312256,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        },
+        "lazy_v": {
+          "hashes": 2048,
+          "ns": 2710411557,
+          "hps": 755.604806,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        }
+      },
+      "speedup": 1.074351825314985
+    },
+    {
+      "trial": 1,
+      "variant": "lazy_v",
+      "order": [
+        "baseline",
+        "lazy_v"
+      ],
+      "rows": {
+        "baseline": {
+          "hashes": 2048,
+          "ns": 2740199691,
+          "hps": 747.390786,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        },
+        "lazy_v": {
+          "hashes": 2048,
+          "ns": 2680692575,
+          "hps": 763.981674,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        }
+      },
+      "speedup": 1.0221984112070657
+    },
+    {
+      "trial": 1,
+      "variant": "tail",
+      "order": [
+        "baseline",
+        "tail"
+      ],
+      "rows": {
+        "baseline": {
+          "hashes": 2048,
+          "ns": 2725765481,
+          "hps": 751.348571,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        },
+        "tail": {
+          "hashes": 2048,
+          "ns": 2652727793,
+          "hps": 772.035489,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        }
+      },
+      "speedup": 1.0275330503024274
+    },
+    {
+      "trial": 2,
+      "variant": "lazy_v",
+      "order": [
+        "baseline",
+        "lazy_v"
+      ],
+      "rows": {
+        "baseline": {
+          "hashes": 2048,
+          "ns": 2677291119,
+          "hps": 764.9523,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        },
+        "lazy_v": {
+          "hashes": 2048,
+          "ns": 2759035695,
+          "hps": 742.288331,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        }
+      },
+      "speedup": 0.9703720493421615
+    },
+    {
+      "trial": 2,
+      "variant": "tail",
+      "order": [
+        "tail",
+        "baseline"
+      ],
+      "rows": {
+        "tail": {
+          "hashes": 2048,
+          "ns": 2761270421,
+          "hps": 741.687589,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        },
+        "baseline": {
+          "hashes": 2048,
+          "ns": 2823851922,
+          "hps": 725.250493,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        }
+      },
+      "speedup": 1.0226640259588213
+    },
+    {
+      "trial": 3,
+      "variant": "tail",
+      "order": [
+        "tail",
+        "baseline"
+      ],
+      "rows": {
+        "tail": {
+          "hashes": 2048,
+          "ns": 2879113396,
+          "hps": 711.330093,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        },
+        "baseline": {
+          "hashes": 2048,
+          "ns": 2704065531,
+          "hps": 757.378095,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        }
+      },
+      "speedup": 0.9392007739542559
+    },
+    {
+      "trial": 3,
+      "variant": "lazy_v",
+      "order": [
+        "baseline",
+        "lazy_v"
+      ],
+      "rows": {
+        "baseline": {
+          "hashes": 2048,
+          "ns": 2775701066,
+          "hps": 737.831615,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        },
+        "lazy_v": {
+          "hashes": 2048,
+          "ns": 2708724236,
+          "hps": 756.075489,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        }
+      },
+      "speedup": 1.024726338136107
+    },
+    {
+      "trial": 4,
+      "variant": "lazy_v",
+      "order": [
+        "lazy_v",
+        "baseline"
+      ],
+      "rows": {
+        "lazy_v": {
+          "hashes": 2048,
+          "ns": 2846295189,
+          "hps": 719.531835,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        },
+        "baseline": {
+          "hashes": 2048,
+          "ns": 2670240379,
+          "hps": 766.972148,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        }
+      },
+      "speedup": 0.938145976847128
+    },
+    {
+      "trial": 4,
+      "variant": "tail",
+      "order": [
+        "tail",
+        "baseline"
+      ],
+      "rows": {
+        "tail": {
+          "hashes": 2048,
+          "ns": 3251687381,
+          "hps": 629.826844,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        },
+        "baseline": {
+          "hashes": 2048,
+          "ns": 3023026393,
+          "hps": 677.466794,
+          "scratch_bytes": 2197568,
+          "stages_ns": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "xor": "ef861897e600bee2c8d2bbdc2147e10a36220acbc1c78cec553c9dd1d573d612"
+        }
+      },
+      "speedup": 0.9296792840299712
+    }
+  ],
+  "builds": {
+    "baseline": {
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "transformed_sha256": "994a04c72e65fb8c09401a1bea6e500de92ec423199d28d836340a572a089076"
+    },
+    "tail": {
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "transformed_sha256": "49b8c216f72b30d96176817cb075bab5c288e2edd8d0742eca91af4438fc4e38"
+    },
+    "lazy_v": {
+      "flags": [
+        "-O3",
+        "-std=gnu99",
+        "-funroll-loops",
+        "-fomit-frame-pointer",
+        "-march=native"
+      ],
+      "parity": true,
+      "compiler": "gcc (Ubuntu 14.2.0-19ubuntu2) 14.2.0",
+      "transformed_sha256": "f552c38a00787705571e6d3bda08d32b6f756f0e77e4885be71532bf9dbbf1bc"
+    }
+  },
+  "cpuinfo": "processor\t: 0\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 183\nmodel name\t: 13th Gen Intel(R) Core(TM) i9-13980HX\nstepping\t: 1\nmicrocode\t: 0x12f\ncpu MHz\t\t: 800.000\ncache size\t: 36864 KB\nphysical id\t: 0\nsiblings\t: 32\ncore id\t\t: 0\ncpu cores\t: 24\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 32\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities\nvmx flags\t: vnmi preemption_timer posted_intr invvpid ept_x_only ept_ad ept_1gb flexpriority apicv tsc_offset vtpr mtf vapic ept vpid unrestricted_guest vapic_reg vid ple shadow_vmcs ept_violation_ve ept_mode_based_exec tsc_scaling usr_wait_pause\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs eibrs_pbrsb rfds bhi vmscape\nbogomips\t: 4838.40\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 39 bits physical, 48 bits virtual\npower management:",
+  "sources": {
+    "variants.py": "e7b1bab6dc3f13aaeac70de2a0359735efea25c48a7ca35e3cc5c6bb2a6f5359",
+    "bench.py": "3edf5048edd56e1a68049ffbc787c0dfa7f99a236dff674fdf44dc6e3491ce35",
+    "yespower-opt.c": "994a04c72e65fb8c09401a1bea6e500de92ec423199d28d836340a572a089076",
+    "yespower-ref.c": "c3fd5d2c42c39b19326ca4d5412f335ea2271dc8204ddbb7b83669b486038772"
+  },
+  "summary": {
+    "tail": {
+      "median_paired_speedup": 1.0226640259588213,
+      "min": 0.9296792840299712,
+      "max": 1.1426185925232097
+    },
+    "lazy_v": {
+      "median_paired_speedup": 1.0221984112070657,
+      "min": 0.938145976847128,
+      "max": 1.074351825314985
+    }
+  }
+}

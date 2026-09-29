@@ -1,0 +1,10 @@
+{
+  "yespower-opt.c": {
+    "url": "https://raw.githubusercontent.com/openwall/yespower/main/yespower-opt.c",
+    "sha256": "6bbb6ab96474dc95dbfecfa7d782c3937c862d042f3afecf5e45a9abc2817801"
+  },
+  "sha256.c": {
+    "url": "https://raw.githubusercontent.com/openwall/yespower/main/sha256.c",
+    "sha256": "c1b3d075c554cc27449f9291469809444ae13445f02c1b16e354fdb4ab2b3433"
+  }
+}

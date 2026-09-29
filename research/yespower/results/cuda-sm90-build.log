@@ -1,0 +1,69 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_Z41yespowertide_kernel_warp8_full_reg_scalarPKhPhiS1_S1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z41yespowertide_kernel_warp8_full_reg_scalarPKhPhiS1_S1_S1_
+    640 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 168 registers
+ptxas info    : Compiling entry function '_Z34yespowertide_kernel_warp8_full_regPKhPhiS1_S1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z34yespowertide_kernel_warp8_full_regPKhPhiS1_S1_S1_
+    640 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 168 registers
+ptxas info    : Compiling entry function '_Z29yespowertide_kernel_warp8_regPKhPhiS1_S1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z29yespowertide_kernel_warp8_regPKhPhiS1_S1_S1_
+    640 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 168 registers
+ptxas info    : Compiling entry function '_Z41yespowertide_kernel_warp8_full_smix_statsPhiS_S_S_S_PKhPy' for 'sm_90'
+ptxas info    : Function properties for _Z41yespowertide_kernel_warp8_full_smix_statsPhiS_S_S_S_PKhPy
+    544 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 88 registers
+ptxas info    : Compiling entry function '_Z36yespowertide_kernel_warp8_full_statsPKhPhiS1_S1_S1_S1_Py' for 'sm_90'
+ptxas info    : Function properties for _Z36yespowertide_kernel_warp8_full_statsPKhPhiS1_S1_S1_S1_Py
+    640 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 168 registers
+ptxas info    : Compiling entry function '_Z35yespowertide_kernel_warp8_full_smixPhiS_S_S_S_PKh' for 'sm_90'
+ptxas info    : Function properties for _Z35yespowertide_kernel_warp8_full_smixPhiS_S_S_S_PKh
+    544 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 88 registers
+ptxas info    : Compiling entry function '_Z37yespowertide_kernel_warp8_full_sharedPKhPhiS1_S1_S1_i' for 'sm_90'
+ptxas info    : Function properties for _Z37yespowertide_kernel_warp8_full_sharedPKhPhiS1_S1_S1_i
+    672 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 125 registers
+ptxas info    : Compiling entry function '_Z38yespowertide_kernel_warp8_full_persistPKhPhiS1_S1_S1_S1_i' for 'sm_90'
+ptxas info    : Function properties for _Z38yespowertide_kernel_warp8_full_persistPKhPhiS1_S1_S1_S1_i
+    672 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 136 registers
+ptxas info    : Compiling entry function '_Z37yespowertide_kernel_warp16_full_queuePKhPhjS1_S1_S1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z37yespowertide_kernel_warp16_full_queuePKhPhjS1_S1_S1_S1_
+    672 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 141 registers
+ptxas info    : Compiling entry function '_Z47yespowertide_kernel_warp8_full_queue_reg_scalarPKhPhjS1_S1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z47yespowertide_kernel_warp8_full_queue_reg_scalarPKhPhjS1_S1_S1_
+    672 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 130 registers
+ptxas info    : Compiling entry function '_Z53yespowertide_kernel_warp8_full_queue_chunk_reg_scalarPKhPhjjS1_S1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z53yespowertide_kernel_warp8_full_queue_chunk_reg_scalarPKhPhjjS1_S1_S1_
+    672 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 131 registers
+ptxas info    : Compiling entry function '_Z42yespowertide_kernel_warp8_full_queue_chunkPKhPhjjS1_S1_S1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z42yespowertide_kernel_warp8_full_queue_chunkPKhPhjjS1_S1_S1_S1_
+    672 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 147 registers
+ptxas info    : Compiling entry function '_Z36yespowertide_kernel_warp8_full_queuePKhPhjS1_S1_S1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z36yespowertide_kernel_warp8_full_queuePKhPhjS1_S1_S1_S1_
+    672 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 134 registers
+ptxas info    : Compiling entry function '_Z30yespowertide_kernel_warp8_fullPKhPhiS1_S1_S1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z30yespowertide_kernel_warp8_fullPKhPhiS1_S1_S1_S1_
+    640 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 168 registers
+ptxas info    : Compiling entry function '_Z25yespowertide_kernel_warp8PKhPhiS1_S1_S1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z25yespowertide_kernel_warp8PKhPhiS1_S1_S1_S1_
+    640 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 168 registers
+ptxas info    : Compiling entry function '_Z27yespowertide_kernel_pwbkdf2PKhPhS1_i' for 'sm_90'
+ptxas info    : Function properties for _Z27yespowertide_kernel_pwbkdf2PKhPhS1_i
+    736 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 30 registers
+ptxas info    : Compiling entry function '_Z19yespowertide_kernelPKhPhiS1_S1_' for 'sm_90'
+ptxas info    : Function properties for _Z19yespowertide_kernelPKhPhiS1_S1_
+    2848 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers

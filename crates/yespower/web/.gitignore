@@ -1,0 +1,4 @@
+pkg-simd/
+pkg-scalar/
+pkg-shared-simd/
+pkg-shared-scalar/

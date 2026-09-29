@@ -1,0 +1,4 @@
+# WebAssembly builds (the tidecoin-yespower web package) use SIMD128, supported by
+# Chrome 91+, Firefox 89+, Safari 16.4+ and Node 16.4+.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+simd128"]
