@@ -1736,13 +1736,29 @@ mod tests {
         socket2::SockRef::from(&io.peer)
             .set_recv_buffer_size(4096)
             .unwrap();
-        // Deliberately exceed socket capacity while the peer never reads.
-        io.outbound.send(vec![b'x'; 8 * 1024 * 1024]).unwrap();
+        // Fill until a write stays pending: Windows loopback can absorb a single
+        // large write despite the requested small socket buffers.
         let deadline = Instant::now() + Duration::from_secs(2);
-        while io.control.progress.writing_since.load(Relaxed) == 0 && Instant::now() < deadline {
+        let mut blocked = false;
+        while Instant::now() < deadline {
+            for _ in 0..16 {
+                match io.outbound.try_send(vec![b'x'; 64 * 1024]) {
+                    Ok(()) => {}
+                    Err(mpsc::TrySendError::Full(_)) => break,
+                    Err(mpsc::TrySendError::Disconnected(_)) => {
+                        panic!("I/O stopped before teardown")
+                    }
+                }
+            }
+            let since = io.control.progress.writing_since.load(Relaxed);
+            if since != 0
+                && io.control.progress.epoch.elapsed().as_millis() as u64 + 1 - since >= 50
+            {
+                blocked = true;
+                break;
+            }
             std::thread::sleep(Duration::from_millis(5));
         }
-        assert_ne!(io.control.progress.writing_since.load(Relaxed), 0);
         drop(io.control);
         let deadline = Instant::now() + Duration::from_secs(1);
         while !io.thread.is_finished() && Instant::now() < deadline {
@@ -1750,6 +1766,7 @@ mod tests {
         }
         let finished = io.thread.is_finished();
         let _ = io.peer.shutdown(Shutdown::Both);
+        assert!(blocked, "must fill the socket before testing teardown");
         assert!(
             finished,
             "teardown must interrupt I/O without waiting for its timeout"
