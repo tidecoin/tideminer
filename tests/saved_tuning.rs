@@ -55,12 +55,9 @@ fn mining_automatically_uses_only_compatible_saved_tuning() {
     let home = CacheDir(
         std::env::temp_dir().join(format!("tideminer-startup-cache-{}", std::process::id())),
     );
-    let base = if cfg!(target_os = "macos") {
-        home.0.join("Library/Caches")
-    } else {
-        home.0.clone()
-    };
-    let cache = base.join("tideminer/tune.json");
+    // mine() sets XDG_CACHE_HOME, which overrides the native cache location on
+    // every platform, including macOS.
+    let cache = home.0.join("tideminer/tune.json");
     std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
     let topology = Topology::detect();
     let threads = topology.cpus.len().min(2);
