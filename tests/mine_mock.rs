@@ -15,6 +15,7 @@ use tideminer::target::Target;
 use tideminer::topology::Topology;
 
 const ADDRESS: &str = "rtbc1qexampleexampleexampleexampleexample.rig1";
+mod common;
 
 struct PoolJob {
     prevhash: String,
@@ -85,10 +86,11 @@ struct Tally {
     connections: u64,
 }
 
-fn send(stream: &mut TcpStream, message: Value) {
+fn send(stream: &mut impl Write, message: Value) {
     let mut bytes = serde_json::to_vec(&message).unwrap();
     bytes.push(b'\n');
     let _ = stream.write_all(&bytes);
+    let _ = stream.flush();
 }
 
 /// Phases per connection 1: job A (diff 0.01), after 4 shares a pure retarget to B
@@ -456,4 +458,208 @@ fn unanswered_pings_do_not_disconnect_a_live_pool() {
         "no reconnect while jobs flow"
     );
     assert_eq!(summary.connections, 1);
+}
+
+// First connection stalls; subsequent connections answer shares and pings.
+fn recovers_from_stalled_pool(keep_jobs_flowing: bool, tls: bool, missing_job: bool) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let mut endpoint = Endpoint::parse(&format!(
+        "127.0.0.1:{}",
+        listener.local_addr().unwrap().port()
+    ))
+    .unwrap();
+    endpoint.set_tls(tls);
+    let stop = Arc::new(AtomicBool::new(false));
+    let server_stop = stop.clone();
+    let pool = std::thread::spawn(move || {
+        use std::io::Read;
+        let mut clients = Vec::new();
+        let mut connections = 0;
+        let mut submissions = 0;
+        let mut last_job = Instant::now();
+        let mut first_closed_after = None;
+        let mut first_connected = None;
+        while !server_stop.load(Ordering::SeqCst) {
+            if let Ok((socket, _)) = listener.accept() {
+                #[cfg(feature = "tls")]
+                let mut socket: Box<dyn TestSocket> = if tls {
+                    Box::new(common::tls_server(socket))
+                } else {
+                    Box::new(socket)
+                };
+                #[cfg(not(feature = "tls"))]
+                let mut socket: Box<dyn TestSocket> = Box::new(socket);
+                socket.nonblocking();
+                clients.push((socket, Vec::<u8>::new(), false));
+                connections += 1;
+                if connections == 1 {
+                    first_connected = Some(Instant::now());
+                }
+            }
+            for (socket, pending, authorized) in &mut clients {
+                let mut buf = [0; 4096];
+                loop {
+                    let n = match socket.read(&mut buf) {
+                        Ok(n) => n,
+                        Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
+                        Err(_) => 0, // TLS reports an unclean TCP close as an error.
+                    };
+                    if n == 0 {
+                        if first_closed_after.is_none() {
+                            first_closed_after = first_connected.map(|t| t.elapsed());
+                        }
+                        break;
+                    }
+                    pending.extend_from_slice(&buf[..n]);
+                }
+                while let Some(end) = pending.iter().position(|b| *b == b'\n') {
+                    let line: Vec<_> = pending.drain(..=end).collect();
+                    let msg: Value = serde_json::from_slice(&line).unwrap();
+                    let id = &msg["id"];
+                    match msg["method"].as_str() {
+                        Some("mining.subscribe") => send(
+                            socket,
+                            json!({"id":id,"result":[[],"aabbccdd",4],"error":null}),
+                        ),
+                        Some("mining.authorize") => {
+                            send(socket, json!({"id":id,"result":true,"error":null}));
+                            send(
+                                socket,
+                                json!({"method":"mining.set_difficulty","params":[0.0001]}),
+                            );
+                            if !missing_job || connections > 1 {
+                                send(
+                                    socket,
+                                    PoolJob::new(1, 1_700_000_000, 0.0001).notify("stall", true),
+                                );
+                            }
+                            *authorized = true;
+                        }
+                        Some("mining.submit") => {
+                            submissions += 1;
+                            if connections > 1 {
+                                send(socket, json!({"id":id,"result":true,"error":null}));
+                            }
+                        }
+                        Some("mining.ping") if connections > 1 => {
+                            send(socket, json!({"id":id,"result":"pong","error":null}));
+                        }
+                        _ => {} // The first connection also ignores pings.
+                    }
+                }
+            }
+            if keep_jobs_flowing && last_job.elapsed() > Duration::from_millis(100) {
+                for (socket, _, authorized) in &mut clients {
+                    if *authorized {
+                        send(
+                            socket,
+                            if missing_job && connections == 1 {
+                                json!({"method": "test.notice", "params": []})
+                            } else {
+                                PoolJob::new(1, 1_700_000_000, 0.0001).notify("stall", false)
+                            },
+                        );
+                    }
+                }
+                last_job = Instant::now();
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        (connections, submissions, first_closed_after)
+    });
+    let placements = plan(&Topology::detect(), Layout::All, Some(1), None).unwrap();
+    let mut config = Config::new(vec![endpoint], ADDRESS.into(), "x".into(), placements);
+    if tls {
+        config
+            .tls
+            .add_pem_file(std::path::Path::new(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/tests/fixtures/pool-cert.pem"
+            )))
+            .unwrap();
+    }
+    config.reporter = tideminer::report::Reporter::silent();
+    // The silent-pool test must exercise the ping watchdog, not share expiry.
+    config.submit_timeout = if keep_jobs_flowing {
+        Duration::from_millis(250)
+    } else {
+        Duration::from_secs(30)
+    };
+    config.idle_ping = Duration::from_millis(300);
+    config.ping_timeout = Duration::from_millis(300);
+    config.handshake_timeout = Duration::from_millis(500);
+    config.time_limit = Some(Duration::from_secs(4));
+    let result = miner::run(&config, stop.clone());
+    stop.store(true, Ordering::SeqCst);
+    let (connections, submissions, first_closed_after) = pool.join().unwrap();
+    let summary = result.unwrap();
+    assert_eq!(
+        connections, 2,
+        "must reconnect once and keep the healthy session"
+    );
+    assert!(
+        submissions > 4,
+        "must resume submissions on the new connection"
+    );
+    assert!(
+        summary.accepted > 0,
+        "must receive share responses after recovery"
+    );
+    assert_eq!(
+        summary.retried, 0,
+        "must not retry shares on a stalled session"
+    );
+    assert!(
+        missing_job || summary.discarded > 0,
+        "unconfirmed old-session shares are discarded"
+    );
+    assert!(
+        first_closed_after.expect("must close the old socket") < Duration::from_secs(2),
+        "must detect the stall promptly, regardless of incoming jobs"
+    );
+}
+
+#[test]
+fn reconnects_when_jobs_flow_but_shares_go_unanswered() {
+    recovers_from_stalled_pool(true, false, false);
+}
+
+#[test]
+fn reconnects_when_pool_stays_silent() {
+    recovers_from_stalled_pool(false, false, false);
+}
+
+trait TestSocket: std::io::Read + Write {
+    fn nonblocking(&mut self);
+}
+
+impl TestSocket for TcpStream {
+    fn nonblocking(&mut self) {
+        self.set_nonblocking(true).unwrap();
+    }
+}
+
+#[cfg(feature = "tls")]
+impl TestSocket for rustls::StreamOwned<rustls::ServerConnection, TcpStream> {
+    fn nonblocking(&mut self) {
+        self.sock.set_nonblocking(true).unwrap();
+    }
+}
+
+#[cfg(feature = "tls")]
+#[test]
+fn tls_reconnects_when_jobs_flow_but_shares_go_unanswered() {
+    recovers_from_stalled_pool(true, true, false);
+}
+
+#[cfg(feature = "tls")]
+#[test]
+fn tls_reconnects_when_pool_stays_silent() {
+    recovers_from_stalled_pool(false, true, false);
+}
+
+#[test]
+fn reconnects_when_authorized_pool_sends_traffic_but_no_work() {
+    recovers_from_stalled_pool(true, false, true);
 }

@@ -19,10 +19,12 @@ irm https://github.com/tidecoin/tideminer/releases/latest/download/install.ps1 |
 ```
 
 The scripts ([install.sh](install.sh), [install.ps1](install.ps1)) download the release
-archive for the machine, refuse it unless it matches the release's `SHA256SUMS`,
-install without administrator rights (`~/.local/bin`, or
-`%LOCALAPPDATA%\Programs\tideminer` added to the user PATH), run `tideminer self-test`,
-and can be re-run to update. `TIDEMINER_VERSION=v0.2.0` pins a release;
+archive for the machine, verify the release's `SHA256SUMS` and run the downloaded
+binary's `self-test` before replacing an existing installation. They install without
+administrator rights (`~/.local/bin`, or `%LOCALAPPDATA%\Programs\tideminer` added to
+the user PATH) and can be re-run to update. On Linux/macOS, a running miner keeps
+using the old binary until you restart it with your usual settings. On Windows,
+stop the miner before updating, then start it again. `TIDEMINER_VERSION=v0.2.0` pins a release;
 `TIDEMINER_INSTALL_DIR` changes the target. The download URLs need the releases to be
 public.
 
@@ -88,7 +90,9 @@ yespower's memory-hard core on the GPU ([src/gpu/yespower.metal](src/gpu/yespowe
 workers; the CPU does SHA-256 / PBKDF2 before and HMAC after, and re-hashes every
 share before submitting it. The GPU checks the known header/hash pair at start and
 every minute; a failed check or a GPU/CPU disagreement stops the GPU worker with a
-warning while the CPU workers go on.
+warning while the CPU workers go on. A GPU batch has a 10-second completion
+deadline; timeout disables that worker without reusing its in-flight buffers.
+In GPU-only mode, a worker failure stops the miner instead of leaving it idle.
 
 The GPU shares the chip's memory system and power with the CPU, and yespower is
 memory-hard: each GPU hash streams 2 MiB through the system cache and evicts the CPU
@@ -98,7 +102,7 @@ more lowered the total by 13-40%. Details: [docs/METAL_GPU.md](docs/METAL_GPU.md
 
 ```sh
 tideminer tune --gpu                      # measure this Mac's best GPU load; saved
-tideminer -o POOL:PORT -u ADDRESS --autotune --gpu
+tideminer -o POOL:PORT -u ADDRESS --gpu    # automatically uses matching saved tuning
 tideminer -o POOL:PORT -u ADDRESS --gpu --gpu-hashes 150   # or set the load yourself
 tideminer -o POOL:PORT -u ADDRESS -t 0 --gpu              # GPU only, CPU left free
 ```
@@ -129,11 +133,15 @@ cpuminer-style, no subcommand needed (`tideminer mine ...` works too):
   `--tls`. TLS verifies the certificate and hostname against the Mozilla roots; `--cert
   ca.pem` trusts a pool's private CA. There is no insecure mode. `-o` may be repeated
   for failover. Password defaults to `x` (`-p`, `-O USER:PASS`, `TIDEMINER_PASSWORD`).
+  Pool-specific password options pass through unchanged: for rplant, use
+  `-p 'webpassword=YOURPASS'`. No separate `--webpassword` flag is needed; the pool
+  interprets this value, and protocol logging hides the entire password field.
 - cpuminer flags accepted: `-a` (Tidecoin names only; `-a yespower` needs `-N 2048 -R 8`),
   `-N`/`-R`/`-K`, `-t`, `--cpu-affinity MASK`, `--cpu-priority 0-5`, `-q`, `--no-color`,
   `-D` (debug), `-P` (protocol dump, password hidden), `-r`, `--retry-pause`, `-T`,
   `--time-limit`, `--benchmark`.
-- CPU placement: by default every allowed logical CPU gets one pinned worker hashing
+- CPU placement: mining automatically uses a matching saved `tideminer tune` result.
+  Without one, every allowed logical CPU gets one pinned worker hashing
   one nonce at a time; that measured best for sustained throughput on the hybrid
   i9-13980HX. `-t N` takes CPUs in priority order (P cores, their SMT siblings, then E
   cores spread over L2 clusters); `--layout physical|performance|efficiency` and
@@ -143,7 +151,9 @@ cpuminer-style, no subcommand needed (`tideminer mine ...` works too):
   worker in the L2 cluster, while the hashes in flight stay within the logical CPU
   count. So `-t 8 --layout performance` runs 8 x 2 hashes on the 8 P cores, and the
   all-CPU default stays at one hash per worker. `--lanes 1|2` forces a count.
-- `--autotune` measures instead of trusting the rules: within your `-t`, `--layout`,
+- `--autotune` runs measurements only when no matching saved result exists.
+  Without this flag, a cache miss uses the built-in rules immediately.
+  Within your `-t`, `--layout`,
   `--cpus` and `--lanes`, it compares the configurations that differ (lanes per core,
   a P core's SMT sibling versus a second lane, E cores versus SMT siblings) for
   ~15-40 s before connecting, in mirrored rounds, and prints a ranked table. A
@@ -156,8 +166,14 @@ cpuminer-style, no subcommand needed (`tideminer mine ...` works too):
   hashes per joule (`sudo tideminer tune` on Linux, whose CPU energy counter is
   root-only; unplugged laptops fall back to battery discharge), the fastest and the
   most efficient configuration as mining flags, and saves the fastest to
-  `~/.cache/tideminer/tune.json`. `--autotune` with the same limits then uses it
-  without measuring. `tune --list` shows the candidates; `tune --quick` runs the
+  `~/.cache/tideminer/tune.json`. Mining with the same machine and CPU/GPU limits
+  then uses it automatically, without measuring or needing `--autotune`.
+  Profiles are miner-version-specific; after an update, run `tune` again or use
+  `--autotune` for a quick comparison.
+  Different limits do not reuse that profile; malformed or invalid cached results
+  fall back to the rules (or quick tuning with `--autotune`).
+  `bench` and `topology` continue to use their explicit settings and built-in rules.
+  `tune --list` shows the candidates; `tune --quick` runs the
   `--autotune` comparison alone.
 - `--max-temp C` (Linux, coretemp/k10temp): keeps the CPU package under C by parking
   workers (lowest priority first) and adding them back once 3 °C cooler, instead of
@@ -165,6 +181,30 @@ cpuminer-style, no subcommand needed (`tideminer mine ...` works too):
   second of stopping. Laptops that boost to a thermal target sit near it under any
   load (this i9: ~92 °C during turbo, ~82 °C sustained), so use it there as a safety
   net just above that point (e.g. 90-95); a lower limit mostly idles the miner.
+- Pool recovery: `--submit-timeout` defaults to **5 seconds** from queueing a
+  share until its response. An unanswered share ends the session even while jobs
+  arrive. `--timeout` / `-T` is a separate **90-second total idle watchdog**, with
+  a ping halfway through; pools that ignore pings can legitimately be quiet
+  between jobs. Increase either limit for a pool that needs longer. The first
+  recovery attempt after an established session fails is immediate. Repeated
+  failures back off with jitter, capped by `--retry-pause`, and each failure
+  rotates to the next configured pool. A session lasting a minute resets the
+  backoff. Unconfirmed shares are discarded when the session ends; their outcome
+  is unknown and they are never replayed into a different session.
+- Socket teardown interrupts pending TCP/TLS I/O. Stalled writes have a 5-second
+  watchdog; TCP keepalive is enabled, and Linux also bounds unacknowledged data
+  with `TCP_USER_TIMEOUT`. DNS, TCP connect, and TLS handshake share a 10-second
+  connection budget; subscribe/authorize have a separate 10-second budget.
+  After authorization, the first valid job must arrive within 10 seconds;
+  unrelated pool messages cannot keep an idle worker waiting indefinitely.
+  OS DNS calls run in a fixed two-thread resolver with a bounded queue: callers
+  time out even if the OS resolver stalls, without spawning unbounded threads.
+  Pool frames and inbound/outbound queues are bounded; overload reconnects.
+- Mining output uses a bounded background writer. A blocked terminal or log pipe
+  cannot stop share handling or watchdogs. Under sustained output stalls log
+  lines may be dropped; the logger reports the drop count when output resumes.
+  Log lines are capped at 8 KiB, including protocol dumps. Shutdown makes a
+  bounded best-effort flush rather than waiting indefinitely for output.
 - Output: startup banner (kernel, CPU, workers, pool), colored event lines (connect,
   new block with height, difficulty changes, accepted/rejected/stale shares with share
   difficulty, hashrate and latency), a periodic report (`--stats-interval`, default 60 s:

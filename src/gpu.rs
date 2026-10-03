@@ -26,11 +26,14 @@ use objc2_metal::{
     MTLLibrary, MTLResourceOptions, MTLSize,
 };
 use std::ptr::NonNull;
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
 
 const SOURCE: &str = include_str!("gpu/yespower.metal");
 const KERNEL: &str = "yespower_smix8";
 /// SIMD lanes per hash in the kernel.
 const LANES: usize = 8;
+const BATCH_TIMEOUT: Duration = Duration::from_secs(10);
 /// GPU scratch per hash: V (2 MiB) + S (96 KiB) + XY (1 KiB) + B (1 KiB).
 pub const HASH_BYTES: usize = (2048 * 16 * 8 + 1536 * 8 + 16 * 8 + 128) * 8;
 /// Threadgroup size in threads (4 hashes): measured best for CPU + GPU together.
@@ -61,7 +64,14 @@ pub fn info() -> Option<Info> {
 struct Slot {
     input: Buffer,
     output: Buffer,
-    pending: Option<(CommandBuffer, usize)>,
+    pending: Option<Pending>,
+}
+
+struct Pending {
+    command: CommandBuffer,
+    count: usize,
+    completed: mpsc::Receiver<()>,
+    deadline: Instant,
 }
 
 /// The kernel, its scratch and two batch slots: while the GPU runs one batch, the
@@ -173,8 +183,24 @@ impl Gpu {
             },
         );
         encoder.endEncoding();
+        let (completed, completion) = mpsc::sync_channel(1);
+        let handler =
+            block2::RcBlock::new(move |_: NonNull<ProtocolObject<dyn MTLCommandBuffer>>| {
+                let _ = completed.try_send(());
+            });
+        // SAFETY: Metal copies the valid block. Its only capture is an owned,
+        // thread-safe sender; it never accesses Gpu or a buffer's raw memory.
+        unsafe {
+            command.addCompletedHandler(block2::RcBlock::as_ptr(&handler));
+        }
+        let deadline = Instant::now() + BATCH_TIMEOUT;
         command.commit();
-        slot.pending = Some((command, count));
+        slot.pending = Some(Pending {
+            command,
+            count,
+            completed: completion,
+            deadline,
+        });
         Ok(())
     }
 
@@ -185,8 +211,15 @@ impl Gpu {
     /// Wait for the batch in `slot`: B's last 16 words per hash.
     pub fn wait(&mut self, slot: usize) -> Result<Vec<[u32; 16]>> {
         let slot = &mut self.slots[slot];
-        let (command, count) = slot.pending.take().context("GPU slot is idle")?;
-        command.waitUntilCompleted();
+        let pending = slot.pending.as_ref().context("GPU slot is idle")?;
+        // Do not clear pending on timeout: a caller must never reuse input or
+        // read output while the GPU could still access them. The worker exits;
+        // Metal's retained command references keep its resources alive.
+        pending
+            .completed
+            .recv_timeout(pending.deadline.saturating_duration_since(Instant::now()))
+            .context("GPU batch did not complete within 10 seconds")?;
+        let Pending { command, count, .. } = slot.pending.take().unwrap();
         if command.status() != MTLCommandBufferStatus::Completed {
             let reason = command
                 .error()
@@ -241,5 +274,32 @@ impl Gpu {
             );
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn completion_timeout_keeps_the_slot_busy() {
+        let Ok(mut gpu) = Gpu::new(1, DEFAULT_THREADGROUP) else {
+            return;
+        };
+        let prepared = tidecoin_yespower::prepare(&[0; 80]);
+        gpu.submit(0, &[prepared.b]).unwrap();
+        // Withhold the completion signal, independently of GPU execution speed.
+        let (_sender, receiver) = mpsc::channel();
+        let pending = gpu.slots[0].pending.as_mut().unwrap();
+        let actual = std::mem::replace(&mut pending.completed, receiver);
+        pending.deadline = Instant::now() + Duration::from_millis(20);
+        assert!(gpu.wait(0).is_err());
+        assert!(gpu.busy(0));
+        assert!(gpu.submit(0, &[prepared.b]).is_err());
+        let pending = gpu.slots[0].pending.as_mut().unwrap();
+        pending.completed = actual;
+        pending.deadline = Instant::now() + BATCH_TIMEOUT;
+        assert_eq!(gpu.wait(0).unwrap().len(), 1);
+        assert!(!gpu.busy(0));
     }
 }

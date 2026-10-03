@@ -6,7 +6,7 @@
 //! S-box latency and show within seconds. `tideminer tune` (offline, minutes) also
 //! varies the thread count, which power limits decide, so it measures after the
 //! turbo window, reads power where the OS allows, and saves its winner for
-//! `--autotune`.
+//! normal mining startup. `--autotune` measures only when no matching saved result exists.
 //!
 //! Method: candidates run in mirrored rounds (A B C, C B A, ...), so a steady
 //! thermal drift biases every mean equally. A challenger replaces the rule-based
@@ -1100,6 +1100,41 @@ pub fn fingerprint(topology: &Topology) -> String {
 }
 
 impl Saved {
+    fn placements(&self, topology: &Topology, limits: &Limits) -> Result<Vec<Placement>> {
+        ensure!(
+            self.fingerprint == fingerprint(topology) && &self.limits == limits,
+            "saved tuning does not match this machine and limits"
+        );
+        let recipe = self.speed.recipe;
+        ensure!(
+            recipe.threads <= allowed_threads(topology, limits)?,
+            "saved tuning exceeds the thread limit"
+        );
+        match (recipe.gpu_hashes, limits.gpu) {
+            (Some(hashes), Some(gpu)) => ensure!(
+                hashes > 0
+                    && hashes <= gpu.max_hashes
+                    && gpu.hashes.is_none_or(|fixed| hashes == fixed),
+                "saved tuning exceeds the GPU limits"
+            ),
+            (Some(_), None) => anyhow::bail!("saved tuning requires a GPU"),
+            (None, Some(gpu)) => ensure!(
+                gpu.hashes.is_none(),
+                "saved tuning ignores the fixed GPU load"
+            ),
+            (None, None) => {}
+        }
+        let placements = build(topology, limits, recipe)?;
+        ensure!(
+            limits.lanes.is_none_or(|lanes| placements
+                .iter()
+                .filter(|p| p.gpu.is_none())
+                .all(|p| p.lanes == lanes)),
+            "saved tuning ignores the fixed lane count"
+        );
+        Ok(placements)
+    }
+
     pub fn new(topology: &Topology, limits: &Limits, outcome: &Outcome) -> Self {
         let pick = |row: &Row| SavedPick {
             recipe: row.recipe,
@@ -1181,11 +1216,22 @@ impl Store {
             ancestor = d.parent();
         }
         std::fs::create_dir_all(dir).with_context(|| format!("create {}", dir.display()))?;
-        let temporary = self.path.with_extension("json.tmp");
-        std::fs::write(&temporary, serde_json::to_vec_pretty(&file)?)
-            .with_context(|| format!("write {}", temporary.display()))?;
-        std::fs::rename(&temporary, &self.path)
-            .with_context(|| format!("write {}", self.path.display()))?;
+        // Each writer needs its own staging file: sharing tune.json.tmp lets
+        // concurrent miners truncate or rename one another's in-progress JSON.
+        // Cache updates remain last-writer-wins, but every published file is whole.
+        let bytes = serde_json::to_vec_pretty(&file)?;
+        let (temporary, mut output) = create_cache_temporary(&self.path)?;
+        let result = (|| -> Result<()> {
+            use std::io::Write;
+            output.write_all(&bytes)?;
+            drop(output);
+            std::fs::rename(&temporary, &self.path)?;
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&temporary);
+        }
+        result.with_context(|| format!("write {}", self.path.display()))?;
         #[cfg(unix)]
         if let Some((uid, gid)) = self.owner {
             for path in missing.iter().chain(std::iter::once(&self.path)) {
@@ -1197,18 +1243,44 @@ impl Store {
     }
 }
 
+fn create_cache_temporary(path: &Path) -> Result<(PathBuf, std::fs::File)> {
+    use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    for _ in 0..128 {
+        let temporary = path.with_extension(format!(
+            "json.{}.{}.tmp",
+            std::process::id(),
+            NEXT.fetch_add(1, Relaxed)
+        ));
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)
+        {
+            Ok(file) => return Ok((temporary, file)),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Err(anyhow!(
+        "could not create a unique tuning cache temporary file"
+    ))
+}
+
 /// The saved `tideminer tune` result for this machine and these limits.
 pub fn load_saved(topology: &Topology, limits: &Limits) -> Option<Saved> {
     let fingerprint = fingerprint(topology);
-    Store::locate()?
-        .load()
-        .entries
+    let file = Store::locate()?.load();
+    if file.version != 1 {
+        return None;
+    }
+    file.entries
         .into_iter()
         .filter(|e| e.fingerprint == fingerprint && &e.limits == limits)
         .max_by_key(|e| e.unix)
 }
 
-/// Save for `--autotune`; returns the file written.
+/// Save for normal mining startup; returns the file written.
 pub fn save(entry: Saved) -> Result<PathBuf> {
     let store = Store::locate().context("no home directory to save tuning results in")?;
     store.save(entry)?;
@@ -1254,6 +1326,40 @@ pub fn equivalent_flags(topology: &Topology, placements: &[Placement]) -> Option
     Some(format!("--cpus {} --lanes {lanes}{gpu}", ranges.join(",")))
 }
 
+/// Reuse a compatible offline result without running measurements. Invalid or
+/// obsolete cached recipes are ignored so they cannot prevent mining startup.
+pub fn saved_placements(
+    topology: &Topology,
+    limits: &Limits,
+    out: &Reporter,
+) -> Option<Vec<Placement>> {
+    let saved = load_saved(topology, limits)?;
+    match saved.placements(topology, limits) {
+        Ok(placements) => {
+            out.line(
+                "tuning",
+                Color::Cyan,
+                format!(
+                    "using saved `tideminer tune` from {}: {}, {} ({:+.1}% over the rules)",
+                    saved.tuned_at,
+                    label(&placements),
+                    format_rate(saved.speed.rate),
+                    (saved.speed.rate / saved.baseline_rate - 1.0) * 100.0
+                ),
+            );
+            Some(placements)
+        }
+        Err(error) => {
+            out.line(
+                "warning",
+                Color::Yellow,
+                format!("ignoring invalid saved tuning: {error:#}"),
+            );
+            None
+        }
+    }
+}
+
 /// `--autotune`: the saved offline result for these limits if there is one,
 /// otherwise a quick comparison now. Prints what it did; returns the placements.
 pub fn autotune(
@@ -1268,15 +1374,7 @@ pub fn autotune(
             out.paint(Color::Cyan, format!("{:<8}", "autotune"))
         ));
     };
-    if let Some(saved) = load_saved(topology, limits) {
-        let placements = build(topology, limits, saved.speed.recipe)?;
-        heading(format!(
-            "using `tideminer tune` from {}: {}, {} ({:+.1}% over the rules)",
-            saved.tuned_at,
-            label(&placements),
-            format_rate(saved.speed.rate),
-            (saved.speed.rate / saved.baseline_rate - 1.0) * 100.0
-        ));
+    if let Some(placements) = saved_placements(topology, limits, out) {
         return Ok(placements);
     }
     let count = quick_candidates(topology, limits)?.len();
@@ -1527,6 +1625,56 @@ mod tests {
     }
 
     #[test]
+    fn saved_recipes_respect_cpu_and_gpu_limits() {
+        let t = hybrid();
+        let limits = Limits {
+            cpus: Some(vec![0, 2]),
+            lanes: Some(1),
+            ..free()
+        };
+        let outcome = decide(vec![row("rules", true, &[100.0])], 0.03, None, 1.0);
+        let mut saved = Saved::new(&t, &limits, &outcome);
+        saved.speed.recipe.threads = 2;
+        saved.speed.recipe.lanes = LanePolicy::One;
+        let placements = saved.placements(&t, &limits).unwrap();
+        assert_eq!(
+            placements.iter().filter_map(|p| p.cpu).collect::<Vec<_>>(),
+            [0, 2]
+        );
+        assert!(placements.iter().all(|p| p.lanes == 1));
+        saved.speed.recipe.threads = 3;
+        assert!(saved.placements(&t, &limits).is_err());
+        saved.speed.recipe.threads = 2;
+        saved.speed.recipe.gpu_hashes = Some(96);
+        assert!(saved.placements(&t, &limits).is_err());
+        let gpu_limits = Limits {
+            gpu: Some(GpuLimits {
+                hashes: Some(96),
+                threadgroup: 32,
+                cores: 30,
+                max_hashes: 4000,
+            }),
+            ..limits
+        };
+        saved.limits = gpu_limits.clone();
+        assert_eq!(
+            saved
+                .placements(&t, &gpu_limits)
+                .unwrap()
+                .last()
+                .unwrap()
+                .gpu
+                .unwrap()
+                .hashes,
+            96
+        );
+        for hashes in [None, Some(0), Some(95), Some(4001)] {
+            saved.speed.recipe.gpu_hashes = hashes;
+            assert!(saved.placements(&t, &gpu_limits).is_err());
+        }
+    }
+
+    #[test]
     fn saved_results_round_trip_by_machine_and_limits() {
         let t = hybrid();
         let dir = std::env::temp_dir().join(format!("tideminer-tune-{}", std::process::id()));
@@ -1551,6 +1699,34 @@ mod tests {
         assert_eq!(file.entries.len(), 2);
         assert!(file.entries.iter().any(|e| e.limits == limited));
         assert_eq!(file.entries[0].speed.label, "b");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn concurrent_cache_writers_publish_complete_files() {
+        let dir =
+            std::env::temp_dir().join(format!("tideminer-tune-concurrent-{}", std::process::id()));
+        let store = Store {
+            path: dir.join("tune.json"),
+            owner: None,
+        };
+        let t = hybrid();
+        let outcome = decide(vec![row("rules", true, &[100.0])], 0.03, None, 1.0);
+        let barrier = std::sync::Barrier::new(8);
+        std::thread::scope(|scope| {
+            for _ in 0..8 {
+                scope.spawn(|| {
+                    barrier.wait();
+                    for _ in 0..8 {
+                        store.save(Saved::new(&t, &free(), &outcome)).unwrap();
+                        let bytes = std::fs::read(&store.path).unwrap();
+                        let file: SavedFile = serde_json::from_slice(&bytes).unwrap();
+                        assert_eq!(file.entries.len(), 1);
+                    }
+                });
+            }
+        });
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
         std::fs::remove_dir_all(dir).unwrap();
     }
 

@@ -5,6 +5,8 @@ use std::collections::VecDeque;
 use std::fmt::Display;
 use std::io::IsTerminal;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+use std::sync::{Arc, OnceLock, mpsc};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[derive(Clone, Copy)]
@@ -42,6 +44,78 @@ pub struct Reporter {
     /// Suppress per-share lines (cpuminer `-q`); reports and warnings remain.
     pub quiet: bool,
     pub silent: bool,
+    output: Option<Arc<AsyncOutput>>,
+}
+
+const LOG_CAPACITY: usize = 1024;
+const MAX_LOG_BYTES: usize = 8192;
+
+enum LogEntry {
+    Line(String),
+    Flush(mpsc::Sender<()>),
+}
+
+struct AsyncOutput {
+    tx: mpsc::SyncSender<LogEntry>,
+    dropped: Arc<AtomicU64>,
+}
+
+impl AsyncOutput {
+    fn start(mut writer: impl std::io::Write + Send + 'static) -> std::io::Result<Self> {
+        let (tx, rx) = mpsc::sync_channel(LOG_CAPACITY);
+        let dropped = Arc::new(AtomicU64::new(0));
+        let lost = dropped.clone();
+        std::thread::Builder::new()
+            .name("tm-log".into())
+            .spawn(move || {
+                while let Ok(entry) = rx.recv() {
+                    match entry {
+                        LogEntry::Line(line) => {
+                            let count = lost.swap(0, Relaxed);
+                            if count > 0
+                                && writeln!(
+                                    writer,
+                                    "[logging] dropped {count} lines while output was stalled"
+                                )
+                                .is_err()
+                            {
+                                break;
+                            }
+                            if writeln!(writer, "{line}").is_err() {
+                                break;
+                            }
+                        }
+                        LogEntry::Flush(done) => {
+                            let _ = writer.flush();
+                            let _ = done.send(());
+                        }
+                    }
+                }
+            })?;
+        Ok(Self { tx, dropped })
+    }
+
+    fn line(&self, mut line: String) {
+        if line.len() > MAX_LOG_BYTES {
+            let mut end = MAX_LOG_BYTES - " [truncated]".len();
+            while !line.is_char_boundary(end) {
+                end -= 1;
+            }
+            line.truncate(end);
+            line.push_str(" [truncated]");
+            line.shrink_to_fit();
+        }
+        if self.tx.try_send(LogEntry::Line(line)).is_err() {
+            self.dropped.fetch_add(1, Relaxed);
+        }
+    }
+
+    fn flush(&self, timeout: Duration) {
+        let (tx, rx) = mpsc::channel();
+        if self.tx.try_send(LogEntry::Flush(tx)).is_ok() {
+            let _ = rx.recv_timeout(timeout);
+        }
+    }
 }
 
 impl Reporter {
@@ -54,6 +128,7 @@ impl Reporter {
             color,
             quiet,
             silent: false,
+            output: None,
         }
     }
 
@@ -63,6 +138,42 @@ impl Reporter {
             color: false,
             quiet: true,
             silent: true,
+            output: None,
+        }
+    }
+
+    /// Mining must never wait for a terminal, pipe, or log file. Use one bounded
+    /// process-wide writer; a stalled sink cannot create more blocked threads.
+    pub fn background(mut self) -> anyhow::Result<Self> {
+        if !self.silent && self.output.is_none() {
+            static OUTPUT: OnceLock<Result<Arc<AsyncOutput>, String>> = OnceLock::new();
+            self.output = Some(
+                OUTPUT
+                    .get_or_init(|| {
+                        AsyncOutput::start(std::io::stdout())
+                            .map(Arc::new)
+                            .map_err(|e| e.to_string())
+                    })
+                    .as_ref()
+                    .map_err(|e| anyhow::anyhow!("start log writer: {e}"))?
+                    .clone(),
+            );
+        }
+        Ok(self)
+    }
+
+    /// Best effort at exit. A blocked sink must not prevent shutdown.
+    pub fn flush(&self, timeout: Duration) {
+        if let Some(output) = &self.output {
+            output.flush(timeout);
+        }
+    }
+
+    fn emit(&self, text: String) {
+        if let Some(output) = &self.output {
+            output.line(text);
+        } else {
+            println!("{text}");
         }
     }
 
@@ -79,11 +190,11 @@ impl Reporter {
         if self.silent {
             return;
         }
-        println!(
+        self.emit(format!(
             "{} {} {message}",
             self.paint(Color::Dim, format!("[{}]", timestamp())),
             self.paint(color, format!("{label:<10}"))
-        );
+        ));
     }
 
     /// A share-level line, hidden with `-q`.
@@ -98,16 +209,16 @@ impl Reporter {
         if self.silent {
             return;
         }
-        println!(
+        self.emit(format!(
             "{:22}{} {value}",
             "",
             self.paint(Color::Cyan, format!("{key:<10}"))
-        );
+        ));
     }
 
     pub fn raw(&self, text: impl Display) {
         if !self.silent {
-            println!("{text}");
+            self.emit(text.to_string());
         }
     }
 }
@@ -240,12 +351,14 @@ impl RateMeter {
         }
     }
 
-    pub fn push(&mut self, now: Instant, total: u64) {
-        if self
-            .samples
+    pub fn needs_sample(&self, now: Instant) -> bool {
+        self.samples
             .back()
-            .is_some_and(|(t, _)| now - *t < Duration::from_millis(500))
-        {
+            .is_none_or(|(t, _)| now - *t >= Duration::from_millis(500))
+    }
+
+    pub fn push(&mut self, now: Instant, total: u64) {
+        if !self.needs_sample(now) {
             return;
         }
         self.samples.push_back((now, total));
@@ -333,6 +446,47 @@ fn find_package_temperature() -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stalled_log_sink_cannot_block_producers_or_shutdown() {
+        struct Stalled {
+            entered: Option<mpsc::Sender<()>>,
+            release: mpsc::Receiver<()>,
+        }
+        impl std::io::Write for Stalled {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                if let Some(entered) = self.entered.take() {
+                    let _ = entered.send(());
+                    let _ = self.release.recv();
+                }
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let (entered, ready) = mpsc::channel();
+        let (release, wait) = mpsc::channel();
+        let output = AsyncOutput::start(Stalled {
+            entered: Some(entered),
+            release: wait,
+        })
+        .unwrap();
+        output.line("first".into());
+        ready.recv_timeout(Duration::from_secs(2)).unwrap();
+        let started = Instant::now();
+        // Flush itself must have a deadline even before the queue fills.
+        output.flush(Duration::from_millis(20));
+        for _ in 0..LOG_CAPACITY * 2 {
+            output.line("more".into());
+        }
+        output.flush(Duration::from_millis(20));
+        let elapsed = started.elapsed();
+        let dropped = output.dropped.load(Relaxed);
+        release.send(()).unwrap();
+        assert!(elapsed < Duration::from_secs(1));
+        assert!(dropped >= LOG_CAPACITY as u64);
+    }
 
     #[test]
     fn formatting() {

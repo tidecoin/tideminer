@@ -255,7 +255,8 @@ struct Shared {
     changed: Condvar,
     epoch: AtomicU64,
     stop: AtomicBool,
-    ready: AtomicUsize,
+    ready: Vec<AtomicBool>,
+    failure: Mutex<Option<String>>,
     exhausted: AtomicU64,
     /// Workers with index >= this are parked (thermal control). Placement order
     /// is priority order, so the least valuable workers park first.
@@ -265,13 +266,15 @@ struct Shared {
 
 impl Shared {
     /// Block until there is work or we are stopping.
-    fn wait_for_work(&self) -> Option<(Arc<Work>, u64)> {
+    fn wait_for_work(&self, index: usize) -> Option<(Arc<Work>, u64)> {
         let mut slot = self.slot.lock().unwrap();
         loop {
             if self.stop.load(Relaxed) {
                 return None;
             }
-            if let Some(work) = slot.as_ref() {
+            if !self.parked(index)
+                && let Some(work) = slot.as_ref()
+            {
                 return Some((work.clone(), self.epoch.load(Relaxed)));
             }
             slot = self.changed.wait(slot).unwrap();
@@ -313,29 +316,60 @@ impl Engine {
             changed: Condvar::new(),
             epoch: AtomicU64::new(0),
             stop: AtomicBool::new(false),
-            ready: AtomicUsize::new(0),
+            ready: (0..placements.len())
+                .map(|_| AtomicBool::new(false))
+                .collect(),
+            failure: Mutex::new(None),
             active: AtomicUsize::new(placements.len()),
             exhausted: AtomicU64::new(0),
             counters: (0..placements.len())
                 .map(|_| PaddedCounter(AtomicU64::new(0)))
                 .collect(),
         });
-        let mut handles = Vec::with_capacity(placements.len());
-        for (index, placement) in placements.iter().cloned().enumerate() {
+        // Own the handles before spawning: a later spawn failure must stop and
+        // join the workers already started, including those waiting for work.
+        let mut engine = Self {
+            shared: shared.clone(),
+            handles: Vec::with_capacity(placements.len()),
+            placements,
+        };
+        let has_cpu_workers = engine.placements.iter().any(|p| p.gpu.is_none());
+        for (index, placement) in engine.placements.iter().cloned().enumerate() {
             let shared = shared.clone();
             let sink = sink.clone();
             let name = match placement.cpu {
                 Some(cpu) => format!("tm-{}{cpu}", placement.kind.label()),
                 None => format!("tm-{index}"),
             };
-            handles.push(
+            engine.handles.push(
                 std::thread::Builder::new()
                     .name(name)
                     .stack_size(256 * 1024)
                     .spawn(move || {
-                        if let Err(error) = worker(index, &placement, nice, &shared, &sink) {
+                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            worker(index, &placement, nice, &shared, &sink)
+                        }))
+                        .unwrap_or_else(|panic| {
+                            let message = panic
+                                .downcast_ref::<String>()
+                                .map(String::as_str)
+                                .or_else(|| panic.downcast_ref::<&str>().copied())
+                                .unwrap_or("unknown panic");
+                            Err(anyhow::anyhow!("worker panicked: {message}"))
+                        });
+                        if let Err(error) = result {
                             let error = format!("{error:#}");
-                            sink(if placement.gpu.is_some() {
+                            let optional = placement.gpu.is_some() && has_cpu_workers;
+                            if !optional {
+                                shared
+                                    .failure
+                                    .lock()
+                                    .unwrap()
+                                    .get_or_insert_with(|| format!("worker {index}: {error}"));
+                            }
+                            // Failed optional GPU startup must not delay CPUs.
+                            shared.ready[index].store(true, Relaxed);
+                            sink(if optional {
                                 WorkerEvent::Warning {
                                     worker: index,
                                     message: format!("GPU worker stopped: {error}"),
@@ -350,21 +384,26 @@ impl Engine {
                     })?,
             );
         }
-        Ok(Self {
-            shared,
-            handles,
-            placements,
-        })
+        Ok(engine)
     }
 
     /// Wait until every worker has placed itself and passed its self-test.
     pub fn wait_ready(&self, timeout: Duration) -> Result<()> {
         let deadline = Instant::now() + timeout;
-        while self.shared.ready.load(Relaxed) < self.placements.len() {
+        loop {
+            if let Some(error) = self.shared.failure.lock().unwrap().as_ref() {
+                bail!("{error}");
+            }
+            if self.shared.ready.iter().all(|ready| ready.load(Relaxed)) {
+                // A failing worker publishes its error before marking ready.
+                if let Some(error) = self.shared.failure.lock().unwrap().as_ref() {
+                    bail!("{error}");
+                }
+                return Ok(());
+            }
             ensure!(Instant::now() < deadline, "workers did not start in time");
             std::thread::sleep(Duration::from_millis(5));
         }
-        Ok(())
     }
 
     /// Replace the current work; every worker switches after its current hash.
@@ -396,6 +435,10 @@ impl Engine {
             .iter()
             .map(|c| c.0.load(Relaxed))
             .collect()
+    }
+
+    pub fn total_hashes(&self) -> u64 {
+        self.shared.counters.iter().map(|c| c.0.load(Relaxed)).sum()
     }
 
     pub fn exhausted_events(&self) -> u64 {
@@ -453,7 +496,6 @@ fn worker(
         #[cfg(not(all(target_os = "macos", feature = "gpu")))]
         {
             let _ = (spec, sink);
-            shared.ready.fetch_add(1, Relaxed);
             bail!("GPU mining needs macOS (Metal) and the `gpu` feature");
         }
     }
@@ -470,10 +512,10 @@ fn scan<const K: usize>(index: usize, shared: &Shared, sink: &Sink) -> Result<()
     const { assert!(K >= 1 && LEASE.is_multiple_of(K as u64)) };
     let mut hasher = Hasher::<K>::new()?;
     hasher.self_test()?;
-    shared.ready.fetch_add(1, Relaxed);
+    shared.ready[index].store(true, Relaxed);
     let counter = &shared.counters[index].0;
     let mut done = 0u64;
-    while let Some((work, epoch)) = shared.wait_for_work() {
+    while let Some((work, epoch)) = shared.wait_for_work(index) {
         let mut headers = [[0u8; 80]; K];
         let mut header_extranonce2 = u64::MAX;
         'work: loop {
@@ -600,15 +642,14 @@ fn scan_gpu(index: usize, spec: GpuSpec, shared: &Shared, sink: &Sink) -> Result
         gpu.self_test()?;
         Ok((gpu, Hasher::<1>::new()?))
     })();
-    // Count as ready even on failure, so the CPU workers start regardless.
-    shared.ready.fetch_add(1, Relaxed);
     let (mut gpu, mut verifier) = started?;
+    shared.ready[index].store(true, Relaxed);
     let vector = crate::pow::Header::from_hex(crate::pow::VECTOR_HEADER)?;
     let counter = &shared.counters[index].0;
     let mut done = 0u64;
     let mut next_check = Instant::now() + GPU_CHECK_EVERY;
     let mut batches: [Vec<GpuItem>; 2] = [Vec::new(), Vec::new()];
-    while let Some((work, epoch)) = shared.wait_for_work() {
+    while let Some((work, epoch)) = shared.wait_for_work(index) {
         let mut feed = GpuFeed::new(work);
         // Queue the next batch in `slot`; false once the work has no nonces left.
         let mut submit = |slot: usize, gpu: &mut crate::gpu::Gpu, batch: &mut Vec<GpuItem>| {
@@ -693,6 +734,158 @@ fn scan_gpu(index: usize, spec: GpuSpec, shared: &Shared, sink: &Sink) -> Result
 mod tests {
     use super::*;
     use crate::topology::Cpu;
+
+    #[test]
+    fn startup_failure_is_reported_without_waiting_for_timeout() {
+        let mut placements = plan(&Topology::uniform(2), Layout::All, None, None).unwrap();
+        placements[1].lanes = 0;
+        let engine = Engine::start(placements, None, Arc::new(|_| {})).unwrap();
+        let start = Instant::now();
+        let error = engine.wait_ready(Duration::from_secs(5)).unwrap_err();
+        assert!(
+            error.to_string().contains("unsupported lane count"),
+            "{error}"
+        );
+        assert!(start.elapsed() < Duration::from_secs(2));
+        // Also joins the healthy worker sleeping for work.
+        engine.stop();
+    }
+
+    #[test]
+    fn parked_workers_stop_and_hash_totals_agree() {
+        let placements = plan(&Topology::uniform(2), Layout::All, None, None).unwrap();
+        let engine = Engine::start(placements, None, Arc::new(|_| {})).unwrap();
+        engine.wait_ready(Duration::from_secs(5)).unwrap();
+        engine.set_active(0);
+        engine.publish(Some(crate::benchmark::synthetic_work().unwrap()));
+        std::thread::sleep(Duration::from_millis(20));
+        assert_eq!(
+            engine.total_hashes(),
+            0,
+            "parked workers must not start new work"
+        );
+        assert_eq!(engine.total_hashes(), engine.hashes().iter().sum::<u64>());
+        engine.stop();
+    }
+
+    #[test]
+    fn work_switches_and_parking_preserve_unique_nonces_and_shutdown() {
+        let placements = plan(&Topology::uniform(4), Layout::All, None, None).unwrap();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let engine = Engine::start(
+            placements,
+            None,
+            Arc::new(move |event| {
+                tx.send(event).unwrap();
+            }),
+        )
+        .unwrap();
+        engine.wait_ready(Duration::from_secs(5)).unwrap();
+        let mut work = crate::benchmark::synthetic_work().unwrap();
+        Arc::get_mut(&mut work).unwrap().submit_target = Target::MAX;
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                for step in 0..80 {
+                    engine.publish((step % 3 != 0).then(|| work.clone()));
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+            });
+            scope.spawn(|| {
+                for step in 0..85 {
+                    engine.set_active(step % 5);
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+            });
+        });
+        let mut resumed = crate::benchmark::synthetic_work().unwrap();
+        let new_work = Arc::get_mut(&mut resumed).unwrap();
+        new_work.submit_target = Target::MAX;
+        new_work.session = 1;
+        new_work.counter = work.counter.clone();
+        engine.set_active(4);
+        engine.publish(Some(resumed));
+        let deadline = Instant::now() + Duration::from_secs(2);
+        let mut collected = Vec::new();
+        loop {
+            let event = rx
+                .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+                .expect("workers must resume on the new work");
+            let resumed = matches!(&event, WorkerEvent::Found(found) if found.work.session == 1);
+            collected.push(event);
+            if resumed {
+                break;
+            }
+        }
+        engine.set_active(0);
+        engine.publish(None);
+        let (stopped, done) = std::sync::mpsc::channel();
+        let shutdown = std::thread::spawn(move || {
+            engine.stop();
+            stopped.send(()).unwrap();
+        });
+        done.recv_timeout(Duration::from_secs(2))
+            .expect("shutdown lost a wakeup");
+        shutdown.join().unwrap();
+        let mut seen = std::collections::HashSet::new();
+        for event in collected.into_iter().chain(rx.try_iter()) {
+            match event {
+                WorkerEvent::Found(found) => {
+                    assert!(
+                        seen.insert((found.extranonce2, found.nonce)),
+                        "duplicate nonce lease"
+                    );
+                }
+                WorkerEvent::Failed { error, .. } => panic!("{error}"),
+                WorkerEvent::Warning { message, .. } => panic!("{message}"),
+            }
+        }
+        assert!(!seen.is_empty());
+    }
+
+    #[test]
+    fn worker_panic_is_reported_to_the_coordinator() {
+        let placements = plan(&Topology::uniform(1), Layout::All, None, None).unwrap();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let engine = Engine::start(
+            placements,
+            None,
+            Arc::new(move |event| {
+                if matches!(event, WorkerEvent::Found(_)) {
+                    panic!("injected worker failure");
+                }
+                tx.send(event).unwrap();
+            }),
+        )
+        .unwrap();
+        engine.wait_ready(Duration::from_secs(5)).unwrap();
+        let mut work = crate::benchmark::synthetic_work().unwrap();
+        Arc::get_mut(&mut work).unwrap().submit_target = Target::MAX;
+        engine.publish(Some(work));
+        let WorkerEvent::Failed { error, .. } = rx.recv_timeout(Duration::from_secs(2)).unwrap()
+        else {
+            panic!("worker panic must be fatal");
+        };
+        assert!(error.contains("injected worker failure"), "{error}");
+        engine.stop();
+    }
+
+    #[cfg(not(all(target_os = "macos", feature = "gpu")))]
+    #[test]
+    fn unavailable_gpu_requires_a_cpu_fallback() {
+        let mut placements = plan(&Topology::uniform(2), Layout::All, None, None).unwrap();
+        placements[1].gpu = Some(GpuSpec {
+            hashes: 1,
+            threadgroup: 32,
+        });
+        let only_gpu = vec![placements[1].clone()];
+        let engine = Engine::start(placements, None, Arc::new(|_| {})).unwrap();
+        engine.wait_ready(Duration::from_secs(2)).unwrap();
+        engine.stop();
+        let engine = Engine::start(only_gpu, None, Arc::new(|_| {})).unwrap();
+        let error = engine.wait_ready(Duration::from_secs(2)).unwrap_err();
+        assert!(error.to_string().contains("GPU mining needs"), "{error}");
+        engine.stop();
+    }
 
     fn hybrid() -> Topology {
         // 2 P cores with SMT (cpus 0-3), 4 E cores in two L2 groups (cpus 4-7).

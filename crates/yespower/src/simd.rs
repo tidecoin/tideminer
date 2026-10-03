@@ -29,8 +29,16 @@
 //! Words are kept in the optimized C's "SIMD-shuffled" Salsa20 layout, so one
 //! 64-byte block is four vectors and pwxform sees two 64-bit lanes per vector.
 
+mod sealed {
+    pub trait Sealed {}
+}
+
 /// A 128-bit vector of four u32 lanes (equivalently two u64 lanes, little-endian).
-pub trait Vec128: Copy {
+///
+/// Sealed: the kernel relies on these implementations for raw-memory layout,
+/// valid vector bit patterns, and bounded, aligned S-box offsets. A safe external
+/// implementation must not be able to violate those memory-safety invariants.
+pub trait Vec128: Copy + sealed::Sealed {
     fn zero() -> Self;
     fn from_u32s(words: [u32; 4]) -> Self;
     fn to_u32s(self) -> [u32; 4];
@@ -113,6 +121,8 @@ fn rotl32x2<const S: u32>(x: u64) -> u64 {
     u64::from(lo) | (u64::from(hi) << 32)
 }
 
+impl crate::simd::sealed::Sealed for Portable {}
+
 impl Vec128 for Portable {
     const SCALAR_SALSA: bool = true;
     #[inline(always)]
@@ -190,6 +200,8 @@ mod sse2 {
     #[derive(Clone, Copy, Debug)]
     #[repr(transparent)]
     pub struct Sse2(pub __m128i);
+
+    impl crate::simd::sealed::Sealed for Sse2 {}
 
     // SAFETY (all methods): SSE2 is part of the x86-64 baseline, so these
     // intrinsics are always available; they are pure register operations.
@@ -325,6 +337,8 @@ mod aarch64 {
     #[repr(transparent)]
     pub struct Aarch64(pub Portable);
 
+    impl crate::simd::sealed::Sealed for Aarch64 {}
+
     #[allow(unsafe_code)]
     impl Vec128 for Aarch64 {
         const SCALAR_SALSA: bool = true;
@@ -447,6 +461,8 @@ mod wasm {
     #[derive(Clone, Copy, Debug)]
     #[repr(transparent)]
     pub struct Simd128(pub v128);
+
+    impl crate::simd::sealed::Sealed for Simd128 {}
 
     impl Vec128 for Simd128 {
         #[inline(always)]

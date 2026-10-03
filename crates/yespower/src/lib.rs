@@ -60,7 +60,8 @@ impl<const K: usize, V: Vec128> Hasher<K, V> {
         let mut headers = [*header; K];
         let mut done = 0u32;
         while done < count {
-            let nonces: [u32; K] = core::array::from_fn(|k| start.wrapping_add(done + k as u32));
+            let nonces: [u32; K] =
+                core::array::from_fn(|k| start.wrapping_add(done).wrapping_add(k as u32));
             for k in 0..K {
                 headers[k][76..].copy_from_slice(&nonces[k].to_le_bytes());
             }

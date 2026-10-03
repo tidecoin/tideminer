@@ -6,7 +6,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::{
     io::{BufRead, BufReader, Read, Write},
-    net::{TcpStream, ToSocketAddrs},
+    net::TcpStream,
     time::{Duration, Instant},
 };
 use url::Url;
@@ -27,7 +27,7 @@ pub struct ProbeReport {
 
 pub(crate) fn remaining(deadline: Instant) -> Result<Duration> {
     let remaining = deadline.saturating_duration_since(Instant::now());
-    ensure!(!remaining.is_zero(), "Stratum probe deadline exceeded");
+    ensure!(!remaining.is_zero(), "Stratum deadline exceeded");
     Ok(remaining)
 }
 
@@ -171,13 +171,12 @@ impl Endpoint {
 
     /// Resolve and connect, trying each address until one answers before the deadline.
     pub fn connect(&self, deadline: Instant) -> Result<TcpStream> {
-        // OS name resolution is blocking; socket operations share a single deadline.
-        let addresses = (self.host.as_str(), self.port)
-            .to_socket_addrs()
-            .context("resolve pool host")?;
+        let addresses = crate::resolver::resolve(&self.host, self.port, deadline)?;
         let mut last = None;
-        for address in addresses {
-            match TcpStream::connect_timeout(&address, remaining(deadline)?) {
+        for (index, address) in addresses.iter().enumerate() {
+            // Give alternate addresses a chance within the overall deadline.
+            let budget = remaining(deadline)? / (addresses.len() - index) as u32;
+            match TcpStream::connect_timeout(address, budget) {
                 Ok(stream) => {
                     stream.set_nodelay(true)?;
                     return Ok(stream);
@@ -436,7 +435,7 @@ mod tests {
         let stream = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
         let _pool = listener.accept().unwrap();
         let error = receive(&mut BufReader::new(stream), Instant::now()).unwrap_err();
-        assert_eq!(error.to_string(), "Stratum probe deadline exceeded");
+        assert_eq!(error.to_string(), "Stratum deadline exceeded");
     }
 
     #[test]

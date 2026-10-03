@@ -50,6 +50,26 @@ impl Stream {
     pub fn shutdown(&self) {
         let _ = self.socket().shutdown(Shutdown::Both);
     }
+
+    /// A separate handle lets the coordinator interrupt blocked TCP/TLS I/O.
+    pub(crate) fn control_socket(&self) -> io::Result<TcpStream> {
+        self.socket().try_clone()
+    }
+
+    pub(crate) fn configure_mining(&self, delivery_timeout: Duration) -> io::Result<()> {
+        self.set_read_timeout(Some(Duration::from_millis(20)))?;
+        self.set_write_timeout(Some(delivery_timeout))?;
+        let socket = socket2::SockRef::from(self.socket());
+        socket.set_tcp_keepalive(
+            &socket2::TcpKeepalive::new()
+                .with_time(Duration::from_secs(30))
+                .with_interval(Duration::from_secs(5))
+                .with_retries(3),
+        )?;
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        socket.set_tcp_user_timeout(Some(delivery_timeout))?;
+        Ok(())
+    }
 }
 
 impl Timeouts for Stream {
@@ -155,13 +175,23 @@ pub fn open(
         let mut connection = rustls::ClientConnection::new(tls.client_config()?, name)
             .context("start TLS session")?;
         let mut socket = socket;
-        socket.set_read_timeout(Some(remaining(deadline)?))?;
-        socket.set_write_timeout(Some(remaining(deadline)?))?;
+        // Blocking complete_io can make many successful short reads and outlive
+        // a per-syscall timeout. Nonblocking I/O keeps the whole handshake bounded.
+        socket.set_nonblocking(true)?;
         while connection.is_handshaking() {
-            connection
-                .complete_io(&mut socket)
-                .with_context(|| format!("TLS handshake with {}", endpoint.host))?;
+            remaining(deadline).context("TLS handshake deadline exceeded")?;
+            match connection.complete_io(&mut socket) {
+                Ok(_) => {}
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(remaining(deadline)?.min(Duration::from_millis(5)));
+                }
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
+                Err(e) => {
+                    return Err(e).with_context(|| format!("TLS handshake with {}", endpoint.host));
+                }
+            }
         }
+        socket.set_nonblocking(false)?;
         let description = format!(
             "{:?} {:?}",
             connection.protocol_version().context("TLS version")?,

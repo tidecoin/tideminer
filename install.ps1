@@ -51,6 +51,12 @@ try {
     $exe = Join-Path $tmp 'tideminer.exe'
     if (-not (Test-Path $exe)) { Fail 'archive does not contain tideminer.exe' }
 
+    Write-Host 'checking downloaded binary'
+    & $exe self-test | Out-Null
+    if ($LASTEXITCODE -ne 0) { Fail 'downloaded binary failed its self-test; existing installation was not changed' }
+    $version = & $exe --version
+    if ($LASTEXITCODE -ne 0) { Fail 'could not read downloaded binary version; existing installation was not changed' }
+
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
     $target = Join-Path $dir 'tideminer.exe'
     try {
@@ -68,9 +74,8 @@ if (-not (Test-Path $target)) {
           "Add-MpPreference -ExclusionPath '$dir'  and re-run this installer.")
 }
 
-& $target self-test | Out-Null
-if ($LASTEXITCODE -ne 0) { Fail 'installed binary failed its self-test' }
-Write-Host "installed $(& $target --version) to $target (self-test passed)" -ForegroundColor Green
+Write-Host "installed $version to $target (self-test passed)" -ForegroundColor Green
+Write-Host 'Start tideminer again with your usual settings to use this version.'
 
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 $parts = if ($userPath) { $userPath -split ';' } else { @() }

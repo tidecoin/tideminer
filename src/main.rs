@@ -32,7 +32,10 @@ Examples:
   tideminer -o POOL:PORT --tls -u ADDRESS.rig            the same, TLS by flag
   tideminer -o POOL:PORT -u ADDRESS.rig -t 8 --autotune  8 threads, tuned first
   tideminer tune                                         offline tuning table
-  tideminer topology -t 8                                where 8 workers would run";
+  tideminer topology -t 8                                where 8 workers would run
+
+Mining automatically reuses saved tuning for the same machine and CPU/GPU limits.
+With no matching result, --autotune runs a quick comparison; otherwise mining starts with built-in rules.";
 
 #[derive(Args, Clone)]
 struct CpuArgs {
@@ -230,9 +233,12 @@ struct MineArgs {
     /// Longest pause between reconnect attempts, seconds.
     #[arg(long, default_value_t = 32)]
     retry_pause: u64,
-    /// Ping the pool after this many silent seconds; reconnect if it stays silent.
-    #[arg(short = 'T', long, default_value_t = 60)]
+    /// Total silent seconds before reconnecting; ping halfway through this window.
+    #[arg(short = 'T', long, default_value_t = 90, value_parser = clap::value_parser!(u64).range(1..=3600))]
     timeout: u64,
+    /// Reconnect if a share goes unanswered this many seconds, even if jobs arrive.
+    #[arg(long, default_value_t = 5, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    submit_timeout: u64,
     /// Maximum unanswered mining.submit requests.
     #[arg(long, default_value_t = 4, value_parser = clap::value_parser!(u64).range(1..=64))]
     max_inflight: u64,
@@ -243,9 +249,9 @@ struct MineArgs {
     /// resume 5 °C below it. Linux (coretemp/k10temp sensors).
     #[arg(long, value_name = "CELSIUS", value_parser = clap::value_parser!(u16).range(40..=110))]
     max_temp: Option<u16>,
-    /// Pick the fastest worker configuration within -t/--layout/--cpus/--lanes:
-    /// the saved `tideminer tune` result for these limits, else a quick
-    /// comparison (~15-40 s) before connecting.
+    /// Run a quick comparison (~15-40 s) before connecting if no matching saved
+    /// tuning exists. Saved `tideminer tune` results are used automatically,
+    /// even without this flag, within the same CPU/GPU limits.
     #[arg(long)]
     autotune: bool,
     /// Hash offline for 30 s and report (cpuminer --benchmark); same as `bench`.
@@ -272,7 +278,7 @@ enum Command {
         #[arg(long)]
         hashes: Option<u64>,
     },
-    /// Measure worker configurations offline; save the fastest for --autotune.
+    /// Measure worker configurations offline; save the fastest for normal mining startup.
     ///
     /// Searches within -t/--layout/--cpus/--lanes, prints a ranked table (with
     /// watts where readable) and the fastest and most efficient settings as flags.
@@ -474,7 +480,7 @@ fn mine(args: MineArgs) -> Result<()> {
             Ok(endpoint)
         })
         .collect::<Result<Vec<_>>>()?;
-    let out = Reporter::new(args.no_color, args.quiet);
+    let out = Reporter::new(args.no_color, args.quiet).background()?;
     let topology = Topology::detect();
     out.raw(out.paint(
         Color::Bold,
@@ -497,6 +503,8 @@ fn mine(args: MineArgs) -> Result<()> {
     pow::self_test()?;
     let placements = if args.autotune {
         tune::autotune(&topology, &args.cpu.limits()?, args.cpu.nice(), &out)?
+    } else if let Some(placements) = tune::saved_placements(&topology, &args.cpu.limits()?, &out) {
+        placements
     } else {
         args.cpu.plan(&topology)?
     };
@@ -515,8 +523,9 @@ fn mine(args: MineArgs) -> Result<()> {
     config.max_inflight = args.max_inflight as usize;
     config.retries = u32::try_from(args.retries).ok();
     config.max_backoff = Duration::from_secs(args.retry_pause.max(1));
-    config.idle_ping = Duration::from_secs(args.timeout.max(5));
-    config.ping_timeout = Duration::from_secs(args.timeout.max(5));
+    config.idle_ping = Duration::from_secs(args.timeout) / 2;
+    config.ping_timeout = Duration::from_secs(args.timeout) - config.idle_ping;
+    config.submit_timeout = Duration::from_secs(args.submit_timeout);
     config.time_limit = args.time_limit.map(Duration::from_secs);
     config.protocol_dump = args.protocol_dump;
     config.debug = args.debug;
@@ -524,15 +533,20 @@ fn mine(args: MineArgs) -> Result<()> {
     let stop = Arc::new(AtomicBool::new(false));
     {
         let stop = stop.clone();
+        let out = out.clone();
         ctrlc::set_handler(move || {
             if stop.swap(true, Ordering::SeqCst) {
                 std::process::exit(130);
             }
-            eprintln!("\nstopping (Ctrl-C again to force)...");
+            out.raw("stopping (Ctrl-C again to force)...");
         })?;
     }
-    let summary = miner::run(&config, stop)?;
-    miner::print_summary(&out, &summary);
+    let result = miner::run(&config, stop);
+    if let Ok(summary) = &result {
+        miner::print_summary(&out, summary);
+    }
+    out.flush(Duration::from_millis(200));
+    result?;
     Ok(())
 }
 
@@ -625,7 +639,7 @@ fn tune_command(
     } else if !quick && !no_save {
         let path = tune::save(tune::Saved::new(&topology, &limits, &outcome))?;
         out.raw(format!(
-            "saved to {}: `tideminer --autotune` with the same -t/--layout/--cpus/--lanes/--gpu uses it",
+            "saved to {}: mining with the same -t/--layout/--cpus/--lanes/--gpu uses it automatically",
             path.display()
         ));
     }
@@ -740,6 +754,35 @@ mod tests {
     #[test]
     fn cli_is_consistent() {
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn pool_timeout_options() {
+        let cli = Cli::try_parse_from(["tideminer", "-o", "h:1", "-u", "a"]).unwrap();
+        assert_eq!(cli.mine.timeout, 90);
+        assert_eq!(cli.mine.submit_timeout, 5);
+        let cli = Cli::try_parse_from([
+            "tideminer",
+            "-o",
+            "h:1",
+            "-u",
+            "a",
+            "-T",
+            "1",
+            "--submit-timeout",
+            "2",
+        ])
+        .unwrap();
+        assert_eq!(cli.mine.timeout, 1);
+        assert_eq!(cli.mine.submit_timeout, 2);
+        for option in ["--timeout", "--submit-timeout"] {
+            for invalid in ["0", "3601"] {
+                assert!(
+                    Cli::try_parse_from(["tideminer", "-o", "h:1", "-u", "a", option, invalid,])
+                        .is_err()
+                );
+            }
+        }
     }
 
     #[test]

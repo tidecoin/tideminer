@@ -7,6 +7,7 @@ pub mod miner;
 pub mod os;
 pub mod pow;
 pub mod report;
+mod resolver;
 pub mod stratum;
 pub mod target;
 pub mod topology;

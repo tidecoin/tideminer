@@ -72,13 +72,17 @@ if [ "$os" = Darwin ]; then
   xattr -d com.apple.quarantine "$tmp/tideminer" 2>/dev/null || true
 fi
 
+say "checking downloaded binary"
+"$tmp/tideminer" self-test >/dev/null || fail "downloaded binary failed its self-test; existing installation was not changed"
+version=$("$tmp/tideminer" --version) || fail "could not read downloaded binary version; existing installation was not changed"
+
 mkdir -p "$dir"
 # Copy next to the target, then rename: a running miner keeps its old file.
 cp "$tmp/tideminer" "$dir/.tideminer.new"
 mv -f "$dir/.tideminer.new" "$dir/tideminer"
 
-"$dir/tideminer" self-test >/dev/null || fail "installed binary failed its self-test"
-say "installed $("$dir/tideminer" --version) to $dir/tideminer (self-test passed)"
+say "installed $version to $dir/tideminer (self-test passed)"
+say "If tideminer is running, restart it with your usual settings to use this version."
 
 case ":$PATH:" in
   *":$dir:"*) ;;

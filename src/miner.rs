@@ -10,8 +10,7 @@
 //! - `clean_jobs=true`, reconnects and extranonce changes invalidate older work;
 //! - by default at most 4 submits in flight; "submit queue full" (20) and "Backend
 //!   unavailable" (26) are retried with the identical share, to preserve its
-//!   identity; a timed-out submit is resent identically. Duplicate handling is
-//!   pool-dependent;
+//!   identity; an unanswered submit times out the connection, even if jobs flow;
 //! - the pool may never ping, so we ping it when the line goes quiet.
 use crate::engine::{Engine, Found, Placement, Work, WorkerEvent};
 use crate::report::{
@@ -21,13 +20,14 @@ use crate::report::{
 use crate::stratum::{AGENT, Endpoint};
 use crate::target::digest_display;
 use crate::topology::CoreKind;
-use crate::transport::{self, Stream, Timeouts, TlsSettings};
+use crate::transport::{self, Stream, TlsSettings};
 use crate::work::{Job, extranonce2_bytes, extranonce2_space};
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::collections::{HashMap, VecDeque};
 use std::io::{ErrorKind, Read, Write};
+use std::net::{Shutdown, TcpStream};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::Relaxed};
 use std::sync::mpsc::{self, TryRecvError};
@@ -38,6 +38,9 @@ const MAX_FOUND_BACKLOG: usize = 4096;
 const MAX_QUEUED_SHARES: usize = 1024;
 const MAX_TEMPLATES: usize = 64;
 const MAX_SUBMIT_ATTEMPTS: u32 = 8;
+const MAX_OUTBOUND: usize = 128;
+const MAX_POOL_BACKLOG: usize = 256;
+const WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 /// Pool difficulty 1 corresponds to 2^16 hashes per share (yespower target scale).
 const HASHES_PER_DIFF: f64 = 65536.0;
 
@@ -53,6 +56,7 @@ pub struct Config {
     /// Periodic report interval.
     pub stats_interval: Duration,
     pub max_inflight: usize,
+    /// Maximum time to wait for any individual share response before reconnecting.
     pub submit_timeout: Duration,
     pub idle_ping: Duration,
     pub ping_timeout: Duration,
@@ -89,11 +93,11 @@ impl Config {
             reporter: Reporter::new(false, false),
             stats_interval: Duration::from_secs(60),
             max_inflight: 4,
-            submit_timeout: Duration::from_secs(45),
-            idle_ping: Duration::from_secs(60),
-            ping_timeout: Duration::from_secs(30),
-            handshake_timeout: Duration::from_secs(30),
-            connect_timeout: Duration::from_secs(15),
+            submit_timeout: Duration::from_secs(5),
+            idle_ping: Duration::from_secs(45),
+            ping_timeout: Duration::from_secs(45),
+            handshake_timeout: Duration::from_secs(10),
+            connect_timeout: Duration::from_secs(10),
             retries: None,
             max_backoff: Duration::from_secs(32),
             time_limit: None,
@@ -126,9 +130,73 @@ pub struct Summary {
 }
 
 enum Event {
-    Line { session: u64, value: Value },
-    Closed { session: u64, error: String },
+    Line {
+        session: u64,
+        value: Value,
+        _permit: PoolPermit,
+    },
+    Closed {
+        session: u64,
+        error: String,
+    },
     Worker(WorkerEvent),
+}
+
+/// Bound queued pool messages across current and already retired sessions.
+struct PoolPermit(Arc<AtomicUsize>);
+
+impl PoolPermit {
+    fn acquire(count: &Arc<AtomicUsize>) -> Option<Self> {
+        if count.fetch_add(1, Relaxed) >= MAX_POOL_BACKLOG {
+            count.fetch_sub(1, Relaxed);
+            None
+        } else {
+            Some(Self(count.clone()))
+        }
+    }
+}
+
+impl Drop for PoolPermit {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Relaxed);
+    }
+}
+
+struct IoProgress {
+    epoch: Instant,
+    writing_since: AtomicU64,
+    stopped: AtomicBool,
+}
+
+impl IoProgress {
+    fn new() -> Self {
+        Self {
+            epoch: Instant::now(),
+            writing_since: AtomicU64::new(0),
+            stopped: AtomicBool::new(false),
+        }
+    }
+
+    fn write_expired(&self) -> bool {
+        let since = self.writing_since.load(Relaxed);
+        since != 0
+            && self.epoch.elapsed().as_millis() as u64 + 1 - since
+                >= WRITE_TIMEOUT.as_millis() as u64
+    }
+}
+
+/// Dropping a session cancels queued sends and interrupts socket I/O immediately,
+/// even when the I/O thread cannot get back to checking its outbound receiver.
+struct ConnectionControl {
+    socket: TcpStream,
+    progress: Arc<IoProgress>,
+}
+
+impl Drop for ConnectionControl {
+    fn drop(&mut self) {
+        self.progress.stopped.store(true, Relaxed);
+        let _ = self.socket.shutdown(Shutdown::Both);
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -157,8 +225,9 @@ enum Request {
 struct Session {
     id: u64,
     endpoint: Endpoint,
-    outbound: mpsc::Sender<Vec<u8>>,
-    dump: Option<(Reporter, String)>,
+    outbound: mpsc::SyncSender<Vec<u8>>,
+    control: ConnectionControl,
+    dump: Option<Reporter>,
     next_id: u64,
     extranonce: Option<(Arc<[u8]>, usize)>,
     authorized: bool,
@@ -168,7 +237,7 @@ struct Session {
     inflight: usize,
     started: Instant,
     last_rx: Instant,
-    ping: Option<(u64, Instant)>,
+    ping: Option<u64>,
     ready_at: Option<Instant>,
 }
 
@@ -183,19 +252,15 @@ impl Session {
 
     fn write(&mut self, message: Value) -> Result<()> {
         let mut bytes = serde_json::to_vec(&message)?;
-        if let Some((reporter, password)) = &self.dump {
-            let text = String::from_utf8_lossy(&bytes);
-            let text = if password.is_empty() {
-                text.into_owned()
-            } else {
-                text.replace(&format!("\"{password}\""), "\"***\"")
-            };
-            reporter.line("send", Color::Dim, text);
+        if let Some(reporter) = &self.dump {
+            reporter.line("send", Color::Dim, redacted_message(message).to_string());
         }
         bytes.push(b'\n');
-        self.outbound
-            .send(bytes)
-            .map_err(|_| anyhow::anyhow!("pool connection closed"))
+        anyhow::ensure!(bytes.len() <= MAX_LINE, "outbound Stratum frame too large");
+        self.outbound.try_send(bytes).map_err(|e| match e {
+            mpsc::TrySendError::Full(_) => anyhow::anyhow!("pool outbound queue full"),
+            mpsc::TrySendError::Disconnected(_) => anyhow::anyhow!("pool connection closed"),
+        })
     }
 
     fn ready(&self) -> bool {
@@ -210,20 +275,28 @@ fn io_loop(
     mut stream: Stream,
     outbound: mpsc::Receiver<Vec<u8>>,
     events: mpsc::Sender<Event>,
+    backlog: Arc<AtomicUsize>,
+    progress: Arc<IoProgress>,
 ) {
-    // Short read timeout: the thread alternates between draining the outbound
-    // queue and reading, so a submit waits at most this long to be written.
-    let _ = stream.set_read_timeout(Some(Duration::from_millis(20)));
-    let _ = stream.set_write_timeout(Some(Duration::from_secs(10)));
+    // Timeouts are configured and checked before this thread is started.
     let mut buffer = vec![0u8; 16 * 1024];
     let mut pending: Vec<u8> = Vec::new();
     let error = 'io: loop {
-        loop {
+        // Bound each batch so peer requests cannot starve reads indefinitely.
+        for _ in 0..16 {
+            if progress.stopped.load(Relaxed) {
+                stream.shutdown();
+                return;
+            }
             match outbound.try_recv() {
                 Ok(bytes) => {
+                    progress
+                        .writing_since
+                        .store(progress.epoch.elapsed().as_millis() as u64 + 1, Relaxed);
                     if let Err(e) = stream.write_all(&bytes).and_then(|()| stream.flush()) {
                         break 'io format!("write to pool: {e}");
                     }
+                    progress.writing_since.store(0, Relaxed);
                 }
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => {
@@ -237,13 +310,26 @@ fn io_loop(
             Ok(n) => {
                 pending.extend_from_slice(&buffer[..n]);
                 while let Some(end) = pending.iter().position(|&b| b == b'\n') {
+                    if end + 1 > MAX_LINE {
+                        break 'io "pool sent an oversized line".to_owned();
+                    }
                     let line: Vec<u8> = pending.drain(..=end).collect();
                     if line.iter().all(u8::is_ascii_whitespace) {
                         continue;
                     }
                     match serde_json::from_slice::<Value>(&line) {
                         Ok(value) if value.is_object() => {
-                            if events.send(Event::Line { session, value }).is_err() {
+                            let Some(permit) = PoolPermit::acquire(&backlog) else {
+                                break 'io "pool message backlog exceeded".to_owned();
+                            };
+                            if events
+                                .send(Event::Line {
+                                    session,
+                                    value,
+                                    _permit: permit,
+                                })
+                                .is_err()
+                            {
                                 stream.shutdown();
                                 return;
                             }
@@ -388,6 +474,7 @@ struct Miner<'a> {
     out: Reporter,
     engine: Engine,
     events_tx: mpsc::Sender<Event>,
+    pool_backlog: Arc<AtomicUsize>,
     found_backlog: Arc<AtomicUsize>,
     found_dropped: Arc<AtomicU64>,
     session: Option<Session>,
@@ -415,12 +502,15 @@ struct Miner<'a> {
 
 impl Miner<'_> {
     fn total_hashes(&self) -> u64 {
-        self.engine.hashes().iter().sum()
+        self.engine.total_hashes()
     }
 
     fn sample(&mut self) {
-        let total = self.total_hashes();
-        self.meter.push(Instant::now(), total);
+        let now = Instant::now();
+        if self.meter.needs_sample(now) {
+            let total = self.total_hashes();
+            self.meter.push(now, total);
+        }
     }
 
     /// Apply `--max-temp`: adjust how many workers hash.
@@ -429,6 +519,11 @@ impl Miner<'_> {
             return;
         };
         let now = Instant::now();
+        // Check before reading sensors: arguments are evaluated even when
+        // update() would skip this step. Pool traffic must not drive sysfs I/O.
+        if control.last_step.is_some_and(|t| now - t < THERMAL_STEP) {
+            return;
+        }
         let Some((old, new, t)) = control.update(now, self.sensors.temperature()) else {
             return;
         };
@@ -465,25 +560,32 @@ impl Miner<'_> {
     fn connect(&mut self, endpoint: &Endpoint) -> Result<()> {
         let deadline = Instant::now() + self.config.connect_timeout;
         let (stream, tls) = transport::open(endpoint, deadline, &self.config.tls)?;
+        stream
+            .configure_mining(self.config.submit_timeout.max(WRITE_TIMEOUT))
+            .context("configure pool socket")?;
+        let progress = Arc::new(IoProgress::new());
+        let control = ConnectionControl {
+            socket: stream.control_socket()?,
+            progress: progress.clone(),
+        };
         self.session_counter += 1;
         self.clean_generation += 1;
         self.templates.clear();
         self.template_order.clear();
         let id = self.session_counter;
-        let (outbound_tx, outbound_rx) = mpsc::channel();
+        let (outbound_tx, outbound_rx) = mpsc::sync_channel(MAX_OUTBOUND);
         let events = self.events_tx.clone();
+        let backlog = self.pool_backlog.clone();
         std::thread::Builder::new()
             .name("tm-net".into())
-            .spawn(move || io_loop(id, stream, outbound_rx, events))?;
+            .spawn(move || io_loop(id, stream, outbound_rx, events, backlog, progress))?;
         let now = Instant::now();
         let mut session = Session {
             id,
             endpoint: endpoint.clone(),
             outbound: outbound_tx,
-            dump: self
-                .config
-                .protocol_dump
-                .then(|| (self.out.clone(), self.config.password.clone())),
+            control,
+            dump: self.config.protocol_dump.then(|| self.out.clone()),
             next_id: 1,
             extranonce: None,
             authorized: false,
@@ -675,6 +777,12 @@ impl Miner<'_> {
                     digest_display(&found.digest)
                 ),
             );
+            // Preserve bounded memory even if a pool advertises an extremely
+            // easy network target and every worker reports block candidates.
+            if self.queue.len() >= MAX_QUEUED_SHARES {
+                self.queue.pop_back();
+                self.summary.discarded += 1;
+            }
             self.queue.push_front(share);
         } else if self.queue.len() < MAX_QUEUED_SHARES {
             self.queue.push_back(share);
@@ -733,6 +841,10 @@ impl Miner<'_> {
         }
         self.summary.retried += 1;
         share.not_before = Instant::now() + delay;
+        if self.queue.len() >= MAX_QUEUED_SHARES {
+            self.queue.pop_back();
+            self.summary.discarded += 1;
+        }
         self.queue.push_front(share);
     }
 
@@ -753,9 +865,9 @@ impl Miner<'_> {
         }
         let session = self.session.as_mut().expect("line for live session");
         session.last_rx = Instant::now();
-        // Any message proves the connection is alive. Some pools (rplant) never
-        // answer mining.ping, so an outstanding ping must not outlive traffic.
-        if let Some((id, _)) = session.ping.take() {
+        // Traffic clears the silence watchdog because some pools (rplant) never
+        // answer mining.ping. Share responses have their own independent deadline.
+        if let Some(id) = session.ping.take() {
             session.requests.remove(&id);
         }
         if let Some(method) = value.get("method").and_then(Value::as_str) {
@@ -984,35 +1096,40 @@ impl Miner<'_> {
         let Some(session) = self.session.as_mut() else {
             return Ok(());
         };
+        if session.control.progress.write_expired() {
+            bail!("pool socket write stalled for 5s");
+        }
         if !session.ready() && now - session.started > config.handshake_timeout {
             bail!("pool did not complete subscribe/authorize in time");
         }
-        if let Some((_, sent)) = session.ping {
-            if now - sent > config.ping_timeout {
-                bail!("pool stopped answering (ping timeout)");
-            }
-        } else if now - session.last_rx > config.idle_ping {
+        if session.latest_job.is_none()
+            && session
+                .ready_at
+                .is_some_and(|t| now - t >= config.handshake_timeout)
+        {
+            bail!("pool authorized but did not provide a valid mining job in time");
+        }
+        // Anchor the full silence budget to the last message, so scheduling a
+        // ping late cannot extend the reconnect deadline.
+        if now - session.last_rx >= config.idle_ping + config.ping_timeout {
+            bail!("pool stopped answering (silence timeout)");
+        }
+        if session.ping.is_none() && now - session.last_rx >= config.idle_ping {
             let id = session.send("mining.ping", json!([]), Request::Ping)?;
-            session.ping = Some((id, now));
+            session.ping = Some(id);
         }
-        let expired: Vec<u64> = session
-            .requests
-            .iter()
-            .filter_map(|(&id, r)| match r {
-                Request::Submit { sent, .. } if now - *sent > config.submit_timeout => Some(id),
-                _ => None,
+        if let Some((&id, Request::Submit { sent, .. })) =
+            session.requests.iter().find(|(_, r)| match r {
+                Request::Submit { sent, .. } => now - *sent >= config.submit_timeout,
+                _ => false,
             })
-            .collect();
-        let mut timed_out = Vec::new();
-        for id in expired {
-            if let Some(Request::Submit { share, .. }) = session.requests.remove(&id) {
-                session.inflight = session.inflight.saturating_sub(1);
-                timed_out.push(share);
-            }
-        }
-        for share in timed_out {
-            // Outcome unknown; retry the same share to preserve its identity.
-            self.requeue(share, Duration::ZERO, "submit timed out");
+        {
+            // Incoming jobs only prove the receive side works. Retrying here
+            // would let a broken submission path survive indefinitely.
+            bail!(
+                "pool did not answer share request {id} within {:.1}s",
+                (now - *sent).as_secs_f64()
+            );
         }
         Ok(())
     }
@@ -1121,7 +1238,7 @@ impl Miner<'_> {
         }
         if let Some(job) = self.session.as_ref().and_then(|s| s.latest_job.as_ref()) {
             let rate = self.meter.rate().max(current).max(1.0);
-            let share_ttf = Duration::from_secs_f64(HASHES_PER_DIFF * job.difficulty / rate);
+            let share_ttf = estimated_time(job.difficulty, rate);
             let mut network = format!(
                 "block {}, pool diff {} (a share every ~{})",
                 self.last_height
@@ -1130,11 +1247,10 @@ impl Miner<'_> {
                 format_duration(share_ttf)
             );
             if let Some(net) = job.network_target.map(|t| t.difficulty()) {
-                let block_ttf = HASHES_PER_DIFF * net / rate;
                 network.push_str(&format!(
                     ", net diff {} (solo block every ~{})",
                     format_diff(net),
-                    format_duration(Duration::from_secs_f64(block_ttf.min(1e12)))
+                    format_duration(estimated_time(net, rate))
                 ));
             }
             out.detail("network", network);
@@ -1186,11 +1302,25 @@ impl Miner<'_> {
 }
 
 fn short_job(id: &str) -> String {
-    if id.len() > 12 {
-        format!("{}…", &id[..12])
+    if let Some((end, _)) = id.char_indices().nth(12) {
+        format!("{}…", &id[..end])
     } else {
         id.to_owned()
     }
+}
+
+fn estimated_time(difficulty: f64, rate: f64) -> Duration {
+    Duration::from_secs_f64((HASHES_PER_DIFF * difficulty / rate).clamp(0.0, 1e12))
+}
+
+fn redacted_message(mut message: Value) -> Value {
+    if message["method"] == "mining.authorize"
+        && let Some(params) = message["params"].as_array_mut()
+        && let Some(password) = params.get_mut(1)
+    {
+        *password = json!("***");
+    }
+    message
 }
 
 /// Errors that must stop the miner instead of reconnecting (bad credentials).
@@ -1205,8 +1335,8 @@ impl std::fmt::Display for Fatal {
 
 impl std::error::Error for Fatal {}
 
-/// Capped exponential reconnect backoff (1 s .. `max`, +0-25% jitter); fail over to
-/// the next configured pool after every second consecutive failure.
+/// Failed attempts back off with jitter; a lost established session gets one
+/// immediate recovery attempt. Rotate through configured pools on failure.
 struct Reconnect {
     pool_index: usize,
     pools: usize,
@@ -1219,14 +1349,21 @@ impl Reconnect {
     /// `healthy`: the session that just ended had been mining for over a minute.
     fn failed(&mut self, healthy: bool) {
         self.failures = if healthy { 1 } else { self.failures + 1 };
-        if self.failures.is_multiple_of(2) {
-            self.pool_index = (self.pool_index + 1) % self.pools;
-        }
+        self.pool_index = (self.pool_index + 1) % self.pools;
         let base = Duration::from_secs(1 << (self.failures.clamp(1, 6) - 1)).min(self.max);
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| d.subsec_nanos());
-        self.retry_at = Instant::now() + base + base.mul_f64(f64::from(nanos % 1000) / 4000.0);
+        let delay = (base + base.mul_f64(f64::from(nanos % 1000) / 4000.0)).min(self.max);
+        self.retry_at = Instant::now() + delay;
+    }
+
+    fn lost_session(&mut self, established: bool, healthy: bool) {
+        let immediate = established && (healthy || self.failures == 0);
+        self.failed(healthy);
+        if immediate {
+            self.retry_at = Instant::now();
+        }
     }
 }
 
@@ -1263,9 +1400,10 @@ pub fn run(config: &Config, stop: Arc<AtomicBool>) -> Result<Summary> {
     );
     let mut miner = Miner {
         config,
-        out: config.reporter.clone(),
+        out: config.reporter.clone().background()?,
         engine,
         events_tx,
+        pool_backlog: Arc::new(AtomicUsize::new(0)),
         found_backlog,
         found_dropped,
         session: None,
@@ -1346,7 +1484,11 @@ pub fn run(config: &Config, stop: Arc<AtomicBool>) -> Result<Summary> {
                 .min(Duration::from_millis(200))
         };
         let step: Result<()> = match events_rx.recv_timeout(wait) {
-            Ok(Event::Line { session, value }) => {
+            Ok(Event::Line {
+                session,
+                value,
+                _permit,
+            }) => {
                 if miner.session.as_ref().is_some_and(|s| s.id == session) {
                     miner.on_line(value)
                 } else {
@@ -1389,8 +1531,15 @@ pub fn run(config: &Config, stop: Arc<AtomicBool>) -> Result<Summary> {
                 .as_ref()
                 .and_then(|s| s.ready_at)
                 .is_some_and(|t| t.elapsed() > Duration::from_secs(60));
+            let established = miner.session.as_ref().is_some_and(|s| s.ready());
             miner.disconnect(&format!("{error:#}"));
-            reconnect.failed(lived);
+            reconnect.lost_session(established, lived);
+            if config.retries.is_some_and(|r| reconnect.failures > r) {
+                break Err(anyhow::Error::new(Fatal(format!(
+                    "giving up after {} failed sessions",
+                    reconnect.failures
+                ))));
+            }
         }
         let dropped = miner.found_dropped.swap(0, Relaxed);
         miner.summary.discarded += dropped;
@@ -1475,6 +1624,140 @@ mod tests {
     use super::*;
 
     #[test]
+    fn pool_metadata_is_safe_to_display() {
+        assert_eq!(short_job("12345678901é-more"), "12345678901é…");
+        assert_eq!(short_job("é"), "é");
+        assert_eq!(short_job("123456789012"), "123456789012");
+        // This is a representable target, despite exceeding Duration's range.
+        assert!(crate::target::Target::from_difficulty(1e30).is_ok());
+        assert_eq!(
+            estimated_time(1e30, 1.0),
+            Duration::from_secs(1_000_000_000_000)
+        );
+        assert_eq!(
+            estimated_time(f64::INFINITY, 1.0),
+            Duration::from_secs(1_000_000_000_000)
+        );
+        assert_eq!(estimated_time(1.0, HASHES_PER_DIFF), Duration::from_secs(1));
+    }
+
+    #[test]
+    fn protocol_dump_redacts_json_escaped_passwords() {
+        for password in ["plain", "quote\"and\\slash\n", "", "é"] {
+            let message =
+                json!({"id": 2, "method": "mining.authorize", "params": ["worker", password]});
+            let dump = redacted_message(message.clone());
+            assert_eq!(dump["params"], json!(["worker", "***"]));
+            assert_eq!(message["params"][1], password);
+        }
+        let message = json!({"id": 3, "method": "mining.submit", "params": ["worker", "job"]});
+        assert_eq!(redacted_message(message.clone()), message);
+    }
+
+    struct TestIo {
+        peer: TcpStream,
+        control: ConnectionControl,
+        outbound: mpsc::SyncSender<Vec<u8>>,
+        events: mpsc::Receiver<Event>,
+        thread: std::thread::JoinHandle<()>,
+        backlog: Arc<AtomicUsize>,
+    }
+
+    fn test_io() -> TestIo {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let stream = Stream::Plain(TcpStream::connect(listener.local_addr().unwrap()).unwrap());
+        let (peer, _) = listener.accept().unwrap();
+        peer.set_write_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        stream.configure_mining(WRITE_TIMEOUT).unwrap();
+        let progress = Arc::new(IoProgress::new());
+        let control = ConnectionControl {
+            socket: stream.control_socket().unwrap(),
+            progress: progress.clone(),
+        };
+        let (outbound, rx) = mpsc::sync_channel(MAX_OUTBOUND);
+        let (tx, events) = mpsc::channel();
+        let backlog = Arc::new(AtomicUsize::new(0));
+        let count = backlog.clone();
+        let thread = std::thread::spawn(move || io_loop(1, stream, rx, tx, count, progress));
+        TestIo {
+            peer,
+            control,
+            outbound,
+            events,
+            thread,
+            backlog,
+        }
+    }
+
+    #[test]
+    fn oversized_complete_frame_closes_connection() {
+        let mut io = test_io();
+        let bytes = format!("{{\"padding\":\"{}\"}}\n", "x".repeat(MAX_LINE));
+        let _ = io.peer.write_all(bytes.as_bytes());
+        let event = io.events.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert!(matches!(event, Event::Closed { error, .. } if error.contains("oversized")));
+        io.thread.join().unwrap();
+    }
+
+    #[test]
+    fn pool_flood_is_bounded_and_disconnects() {
+        let mut io = test_io();
+        io.peer
+            .write_all("{}\n".repeat(MAX_POOL_BACKLOG + 1).as_bytes())
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while !io.thread.is_finished() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert!(io.thread.is_finished());
+        let mut lines = 0;
+        loop {
+            match io.events.recv_timeout(Duration::from_secs(1)).unwrap() {
+                Event::Line { .. } => lines += 1,
+                Event::Closed { error, .. } => {
+                    assert!(error.contains("backlog"));
+                    break;
+                }
+                _ => panic!("unexpected event"),
+            }
+        }
+        assert_eq!(lines, MAX_POOL_BACKLOG);
+        assert_eq!(io.backlog.load(Relaxed), 0);
+        io.thread.join().unwrap();
+    }
+
+    #[test]
+    fn session_teardown_interrupts_a_blocked_socket_write() {
+        let io = test_io();
+        socket2::SockRef::from(&io.control.socket)
+            .set_send_buffer_size(4096)
+            .unwrap();
+        socket2::SockRef::from(&io.peer)
+            .set_recv_buffer_size(4096)
+            .unwrap();
+        // Deliberately exceed socket capacity while the peer never reads.
+        io.outbound.send(vec![b'x'; 8 * 1024 * 1024]).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while io.control.progress.writing_since.load(Relaxed) == 0 && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert_ne!(io.control.progress.writing_since.load(Relaxed), 0);
+        drop(io.control);
+        let deadline = Instant::now() + Duration::from_secs(1);
+        while !io.thread.is_finished() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let finished = io.thread.is_finished();
+        let _ = io.peer.shutdown(Shutdown::Both);
+        assert!(
+            finished,
+            "teardown must interrupt I/O without waiting for its timeout"
+        );
+        io.thread.join().unwrap();
+    }
+
+    #[test]
     fn pool_errors_are_bounded_and_printable() {
         assert_eq!(
             pool_error(&json!([21, "Share was stale!", null])),
@@ -1538,17 +1821,28 @@ mod tests {
             max: Duration::from_secs(32),
         };
         let delay = |r: &Reconnect| r.retry_at.saturating_duration_since(Instant::now());
-        r.failed(false);
+        r.lost_session(true, false);
+        assert_eq!(delay(&r), Duration::ZERO, "first recovery is immediate");
+        assert_eq!(r.pool_index, 1, "try the backup immediately");
+        r.lost_session(true, false);
+        assert!(
+            delay(&r) >= Duration::from_secs(1),
+            "flapping must back off"
+        );
         assert_eq!(r.pool_index, 0);
-        assert!(delay(&r) <= Duration::from_millis(1250));
         r.failed(false);
         assert_eq!(r.pool_index, 1);
         for _ in 0..10 {
             r.failed(false);
         }
-        assert!(delay(&r) > Duration::from_secs(31) && delay(&r) <= Duration::from_secs(40));
-        r.failed(true);
+        assert!(delay(&r) > Duration::from_secs(31) && delay(&r) <= Duration::from_secs(32));
+        r.lost_session(true, true);
         assert_eq!(r.failures, 1);
+        assert_eq!(
+            delay(&r),
+            Duration::ZERO,
+            "healthy sessions reset recovery backoff"
+        );
         r.max = Duration::from_secs(4);
         for _ in 0..10 {
             r.failed(false);

@@ -188,6 +188,10 @@ pub fn sustained(
         seconds > 0.0 && seconds <= 86_400.0,
         "seconds must be in (0, 86400]"
     );
+    ensure!(
+        warmup.is_finite() && (0.0..=86_400.0).contains(&warmup),
+        "warmup must be in [0, 86400]"
+    );
     let failure = Arc::new(Mutex::new(None::<String>));
     let sink: Sink = {
         let failure = failure.clone();
