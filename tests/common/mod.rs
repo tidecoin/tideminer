@@ -15,6 +15,9 @@ pub fn tls_server(
     .with_no_client_auth()
     .with_single_cert(vec![cert], key)
     .unwrap();
+    // Accepted sockets can inherit the listener's nonblocking mode on macOS.
+    // The fixture completes TLS synchronously before its caller switches modes.
+    socket.set_nonblocking(false).unwrap();
     socket
         .set_read_timeout(Some(Duration::from_secs(2)))
         .unwrap();
