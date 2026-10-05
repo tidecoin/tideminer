@@ -492,7 +492,9 @@ fn worker(
     let _ = nice;
     if let Some(spec) = placement.gpu {
         #[cfg(all(target_os = "macos", feature = "gpu"))]
-        return scan_gpu(index, spec, shared, sink);
+        // Inner pools drain every Metal batch; this outer pool also covers
+        // framework temporaries created while dropping the worker's resources.
+        return objc2::rc::autoreleasepool(|_| scan_gpu(index, spec, shared, sink));
         #[cfg(not(all(target_os = "macos", feature = "gpu")))]
         {
             let _ = (spec, sink);
@@ -567,17 +569,18 @@ fn scan<const K: usize>(index: usize, shared: &Shared, sink: &Sink) -> Result<()
 #[cfg(all(target_os = "macos", feature = "gpu"))]
 const GPU_CHECK_EVERY: Duration = Duration::from_secs(60);
 
-/// One GPU hash in a batch; `work: None` marks the known-answer check.
-#[cfg(all(target_os = "macos", feature = "gpu"))]
+/// One GPU hash in a batch. The enclosing work loop owns the job until both
+/// slots drain, so individual nonces do not need their own reference count.
+#[cfg(any(test, all(target_os = "macos", feature = "gpu")))]
 struct GpuItem {
-    work: Option<Arc<Work>>,
+    check: bool,
     extranonce2: u64,
     nonce: u32,
     prepared: tidecoin_yespower::Prepared,
 }
 
 /// Nonces for GPU batches from the work's lease counter, a lease at a time.
-#[cfg(all(target_os = "macos", feature = "gpu"))]
+#[cfg(any(test, all(target_os = "macos", feature = "gpu")))]
 struct GpuFeed {
     work: Arc<Work>,
     header: [u8; 80],
@@ -587,7 +590,7 @@ struct GpuFeed {
     exhausted: bool,
 }
 
-#[cfg(all(target_os = "macos", feature = "gpu"))]
+#[cfg(any(test, all(target_os = "macos", feature = "gpu")))]
 impl GpuFeed {
     fn new(work: Arc<Work>) -> Self {
         Self {
@@ -600,9 +603,9 @@ impl GpuFeed {
         }
     }
 
-    /// Up to `count` items; fewer once the extranonce2 space is exhausted.
-    fn take(&mut self, count: usize, shared: &Shared) -> Vec<GpuItem> {
-        let mut items = Vec::with_capacity(count);
+    /// Fill the existing batch to `count`, preserving any known-answer item.
+    /// May return fewer once the extranonce2 space is exhausted.
+    fn fill(&mut self, items: &mut Vec<GpuItem>, count: usize, shared: &Shared) {
         while items.len() < count && !self.exhausted {
             if self.next == self.end {
                 let start = self.work.counter.fetch_add(LEASE, Relaxed);
@@ -622,13 +625,12 @@ impl GpuFeed {
             self.next += 1;
             self.header[NONCE_OFFSET..].copy_from_slice(&nonce.to_le_bytes());
             items.push(GpuItem {
-                work: Some(self.work.clone()),
+                check: false,
                 extranonce2: self.extranonce2,
                 nonce,
                 prepared: tidecoin_yespower::prepare(&self.header),
             });
         }
-        items
     }
 }
 
@@ -648,29 +650,30 @@ fn scan_gpu(index: usize, spec: GpuSpec, shared: &Shared, sink: &Sink) -> Result
     let counter = &shared.counters[index].0;
     let mut done = 0u64;
     let mut next_check = Instant::now() + GPU_CHECK_EVERY;
-    let mut batches: [Vec<GpuItem>; 2] = [Vec::new(), Vec::new()];
+    let mut batches: [Vec<GpuItem>; 2] = std::array::from_fn(|_| Vec::with_capacity(gpu.hashes()));
+    let mut inputs = Vec::with_capacity(gpu.hashes());
+    let mut tails = Vec::with_capacity(gpu.hashes());
     while let Some((work, epoch)) = shared.wait_for_work(index) {
-        let mut feed = GpuFeed::new(work);
+        let mut feed = GpuFeed::new(work.clone());
         // Queue the next batch in `slot`; false once the work has no nonces left.
         let mut submit = |slot: usize, gpu: &mut crate::gpu::Gpu, batch: &mut Vec<GpuItem>| {
-            let mut items = Vec::with_capacity(gpu.hashes());
+            batch.clear();
             if Instant::now() >= next_check {
                 next_check = Instant::now() + GPU_CHECK_EVERY;
-                items.push(GpuItem {
-                    work: None,
+                batch.push(GpuItem {
+                    check: true,
                     extranonce2: 0,
                     nonce: 0,
                     prepared: tidecoin_yespower::prepare(&vector.0),
                 });
             }
-            let wanted = gpu.hashes() - items.len();
-            items.extend(feed.take(wanted, shared));
-            if items.iter().all(|item| item.work.is_none()) {
+            feed.fill(batch, gpu.hashes(), shared);
+            if batch.iter().all(|item| item.check) {
                 return Ok(false);
             }
-            let inputs: Vec<[u32; 32]> = items.iter().map(|item| item.prepared.b).collect();
+            inputs.clear();
+            inputs.extend(batch.iter().map(|item| item.prepared.b));
             gpu.submit(slot, &inputs)?;
-            *batch = items;
             Ok::<bool, anyhow::Error>(true)
         };
         let mut live = [false; 2];
@@ -683,18 +686,18 @@ fn scan_gpu(index: usize, spec: GpuSpec, shared: &Shared, sink: &Sink) -> Result
                 slot ^= 1;
                 continue;
             }
-            let tails = gpu.wait(slot)?;
+            gpu.wait_into(slot, &mut tails)?;
             live[slot] = false;
-            let batch = std::mem::take(&mut batches[slot]);
+            let batch = &batches[slot];
             for (item, tail) in batch.iter().zip(&tails) {
                 let digest = tidecoin_yespower::finish(tail, &item.prepared.prehash);
-                let Some(work) = &item.work else {
+                if item.check {
                     ensure!(
                         hex::encode(digest) == crate::pow::VECTOR_HASH,
                         "GPU check: wrong hash for the known header"
                     );
                     continue;
-                };
+                }
                 done += 1;
                 if work.submit_target.is_met_by(&digest) {
                     let mut header = work.header(item.extranonce2);
@@ -734,6 +737,60 @@ fn scan_gpu(index: usize, spec: GpuSpec, shared: &Shared, sink: &Sink) -> Result
 mod tests {
     use super::*;
     use crate::topology::Cpu;
+
+    #[test]
+    fn gpu_feed_reuses_storage_across_nonce_rollover_and_exhaustion() {
+        let placements = plan(&Topology::uniform(1), Layout::All, None, None).unwrap();
+        let engine = Engine::start(placements, None, Arc::new(|_| {})).unwrap();
+        let work = crate::benchmark::synthetic_work().unwrap();
+        let mut expected = (1u64 << 32) - LEASE;
+        work.counter.store(expected, Relaxed);
+        let mut feed = GpuFeed::new(work.clone());
+        let mut batch = Vec::with_capacity(96);
+        let storage = batch.as_ptr();
+        for round in 0..4 {
+            batch.clear();
+            if round == 0 {
+                batch.push(GpuItem {
+                    check: true,
+                    extranonce2: 0,
+                    nonce: 0,
+                    prepared: tidecoin_yespower::prepare(&[0; 80]),
+                });
+            }
+            feed.fill(&mut batch, 96, &engine.shared);
+            assert_eq!(batch.len(), 96);
+            assert_eq!(batch.as_ptr(), storage);
+            assert_eq!(Arc::strong_count(&work), 2, "no reference per nonce");
+            for item in batch.iter().filter(|item| !item.check) {
+                assert_eq!(
+                    (item.extranonce2, item.nonce),
+                    (expected >> 32, expected as u32)
+                );
+                let mut header = work.header(item.extranonce2);
+                header[NONCE_OFFSET..].copy_from_slice(&item.nonce.to_le_bytes());
+                let prepared = tidecoin_yespower::prepare(&header);
+                assert_eq!(item.prepared.b, prepared.b);
+                assert_eq!(item.prepared.prehash, prepared.prehash);
+                expected += 1;
+            }
+        }
+
+        let mut last_work = crate::benchmark::synthetic_work().unwrap();
+        Arc::get_mut(&mut last_work).unwrap().extranonce2_space = 1;
+        last_work.counter.store((1u64 << 32) - LEASE, Relaxed);
+        let mut feed = GpuFeed::new(last_work);
+        batch.clear();
+        feed.fill(&mut batch, 96, &engine.shared);
+        assert_eq!(batch.len(), LEASE as usize);
+        assert!(feed.exhausted);
+        assert_eq!(batch.as_ptr(), storage);
+        assert_eq!(batch.last().unwrap().nonce, u32::MAX);
+        batch.clear();
+        feed.fill(&mut batch, 96, &engine.shared);
+        assert!(batch.is_empty());
+        engine.stop();
+    }
 
     #[test]
     fn startup_failure_is_reported_without_waiting_for_timeout() {

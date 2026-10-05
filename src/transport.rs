@@ -17,6 +17,10 @@ use std::net::{Shutdown, TcpStream};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+// Socket delivery and retired-thread cleanup must stay short even when the user
+// permits a longer wait for the pool's application-level share response.
+pub(crate) const WRITE_TIMEOUT: Duration = Duration::from_secs(5);
+
 /// Socket timeouts on whatever carries the bytes.
 pub trait Timeouts {
     fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()>;
@@ -56,9 +60,9 @@ impl Stream {
         self.socket().try_clone()
     }
 
-    pub(crate) fn configure_mining(&self, delivery_timeout: Duration) -> io::Result<()> {
+    pub(crate) fn configure_mining(&self) -> io::Result<()> {
         self.set_read_timeout(Some(Duration::from_millis(20)))?;
-        self.set_write_timeout(Some(delivery_timeout))?;
+        self.set_write_timeout(Some(WRITE_TIMEOUT))?;
         let socket = socket2::SockRef::from(self.socket());
         socket.set_tcp_keepalive(
             &socket2::TcpKeepalive::new()
@@ -67,7 +71,7 @@ impl Stream {
                 .with_retries(3),
         )?;
         #[cfg(any(target_os = "linux", target_os = "android"))]
-        socket.set_tcp_user_timeout(Some(delivery_timeout))?;
+        socket.set_tcp_user_timeout(Some(WRITE_TIMEOUT))?;
         Ok(())
     }
 }

@@ -20,7 +20,7 @@ use crate::report::{
 use crate::stratum::{AGENT, Endpoint};
 use crate::target::digest_display;
 use crate::topology::CoreKind;
-use crate::transport::{self, Stream, TlsSettings};
+use crate::transport::{self, Stream, TlsSettings, WRITE_TIMEOUT};
 use crate::work::{Job, extranonce2_bytes, extranonce2_space};
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
@@ -40,7 +40,6 @@ const MAX_TEMPLATES: usize = 64;
 const MAX_SUBMIT_ATTEMPTS: u32 = 8;
 const MAX_OUTBOUND: usize = 128;
 const MAX_POOL_BACKLOG: usize = 256;
-const WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 /// Pool difficulty 1 corresponds to 2^16 hashes per share (yespower target scale).
 const HASHES_PER_DIFF: f64 = 65536.0;
 
@@ -561,9 +560,7 @@ impl Miner<'_> {
     fn connect(&mut self, endpoint: &Endpoint) -> Result<()> {
         let deadline = Instant::now() + self.config.connect_timeout;
         let (stream, tls) = transport::open(endpoint, deadline, &self.config.tls)?;
-        stream
-            .configure_mining(self.config.submit_timeout.max(WRITE_TIMEOUT))
-            .context("configure pool socket")?;
+        stream.configure_mining().context("configure pool socket")?;
         let progress = Arc::new(IoProgress::new());
         let control = ConnectionControl {
             socket: stream.control_socket()?,
@@ -1670,7 +1667,7 @@ mod tests {
         let (peer, _) = listener.accept().unwrap();
         peer.set_write_timeout(Some(Duration::from_secs(2)))
             .unwrap();
-        stream.configure_mining(WRITE_TIMEOUT).unwrap();
+        stream.configure_mining().unwrap();
         let progress = Arc::new(IoProgress::new());
         let control = ConnectionControl {
             socket: stream.control_socket().unwrap(),

@@ -39,4 +39,39 @@ fn gpu_hashes_match_the_cpu() {
             assert_eq!(*digest, tidecoin_yespower::hash(header));
         }
     }
+
+    // Both retained commands must survive the submit pools draining. Reuse one
+    // output allocation while alternating slots and changing the batch length.
+    let mut tails = Vec::with_capacity(64);
+    let output_storage = tails.as_ptr();
+    for count in [64, 1, 17, 63] {
+        let headers: [Vec<[u8; 80]>; 2] = std::array::from_fn(|slot| {
+            (0..count)
+                .map(|n| [((n + slot * 64) & 255) as u8; 80])
+                .collect()
+        });
+        let prepared = headers.each_ref().map(|headers| {
+            headers
+                .iter()
+                .map(tidecoin_yespower::prepare)
+                .collect::<Vec<_>>()
+        });
+        for (slot, batch) in prepared.iter().enumerate() {
+            let inputs: Vec<_> = batch.iter().map(|item| item.b).collect();
+            gpu.submit(slot, &inputs).unwrap();
+        }
+        for slot in 0..2 {
+            gpu.wait_into(slot, &mut tails).unwrap();
+            assert_eq!(tails.len(), count);
+            assert_eq!(tails.as_ptr(), output_storage);
+            for ((tail, prepared), header) in tails.iter().zip(&prepared[slot]).zip(&headers[slot])
+            {
+                assert_eq!(
+                    tidecoin_yespower::finish(tail, &prepared.prehash),
+                    tidecoin_yespower::hash(header)
+                );
+            }
+            assert!(!gpu.busy(slot));
+        }
+    }
 }

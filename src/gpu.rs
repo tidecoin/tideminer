@@ -17,7 +17,7 @@
 #![allow(unsafe_code)]
 
 use anyhow::{Context, Result, anyhow, ensure};
-use objc2::rc::Retained;
+use objc2::rc::{Retained, autoreleasepool};
 use objc2::runtime::ProtocolObject;
 use objc2_foundation::NSString;
 use objc2_metal::{
@@ -53,11 +53,13 @@ pub struct Info {
 }
 
 pub fn info() -> Option<Info> {
-    let device = MTLCreateSystemDefaultDevice()?;
-    Some(Info {
-        name: device.name().to_string(),
-        cores: crate::os::gpu_core_count(),
-        max_hashes: (device.recommendedMaxWorkingSetSize() as usize / 2) / HASH_BYTES,
+    autoreleasepool(|_| {
+        let device = MTLCreateSystemDefaultDevice()?;
+        Some(Info {
+            name: device.name().to_string(),
+            cores: crate::os::gpu_core_count(),
+            max_hashes: (device.recommendedMaxWorkingSetSize() as usize / 2) / HASH_BYTES,
+        })
     })
 }
 
@@ -86,56 +88,61 @@ pub struct Gpu {
 }
 
 impl Gpu {
+    // Rust worker threads have no Cocoa event loop to drain autoreleased Metal
+    // temporaries. Each Metal operation owns a short-lived pool; Retained fields
+    // keep submitted commands and their resources alive beyond that pool.
     /// Compile the kernel and allocate scratch for `hashes` in flight.
     pub fn new(hashes: usize, threadgroup: usize) -> Result<Self> {
-        ensure!(hashes >= 1, "--gpu-hashes must be at least 1");
-        ensure!(
-            threadgroup >= LANES && threadgroup.is_multiple_of(LANES),
-            "--gpu-threadgroup must be a multiple of {LANES}"
-        );
-        let device = MTLCreateSystemDefaultDevice().context("no Metal GPU")?;
-        let library = device
-            .newLibraryWithSource_options_error(&NSString::from_str(SOURCE), None)
-            .map_err(|e| anyhow!("Metal kernel did not compile: {e}"))?;
-        let function = library
-            .newFunctionWithName(&NSString::from_str(KERNEL))
-            .context("Metal kernel entry point missing")?;
-        let pipeline = device
-            .newComputePipelineStateWithFunction_error(&function)
-            .map_err(|e| anyhow!("Metal pipeline: {e}"))?;
-        ensure!(
-            threadgroup <= pipeline.maxTotalThreadsPerThreadgroup(),
-            "--gpu-threadgroup {threadgroup} exceeds the device limit {}",
-            pipeline.maxTotalThreadsPerThreadgroup()
-        );
-        let working_set = device.recommendedMaxWorkingSetSize() as usize;
-        let scratch_bytes = hashes * HASH_BYTES;
-        ensure!(
-            scratch_bytes <= working_set / 2,
-            "--gpu-hashes {hashes} needs {} MiB of GPU memory; this Mac allows about {} MiB",
-            scratch_bytes >> 20,
-            (working_set / 2) >> 20
-        );
-        let buffer = |bytes: usize, options: MTLResourceOptions| {
-            device
-                .newBufferWithLength_options(bytes, options)
-                .context("Metal buffer allocation failed")
-        };
-        let scratch = buffer(scratch_bytes, MTLResourceOptions::StorageModePrivate)?;
-        let slot = || -> Result<Slot> {
-            Ok(Slot {
-                input: buffer(hashes * 32 * 4, MTLResourceOptions::StorageModeShared)?,
-                output: buffer(hashes * 16 * 4, MTLResourceOptions::StorageModeShared)?,
-                pending: None,
+        autoreleasepool(|_| {
+            ensure!(hashes >= 1, "--gpu-hashes must be at least 1");
+            ensure!(
+                threadgroup >= LANES && threadgroup.is_multiple_of(LANES),
+                "--gpu-threadgroup must be a multiple of {LANES}"
+            );
+            let device = MTLCreateSystemDefaultDevice().context("no Metal GPU")?;
+            let library = device
+                .newLibraryWithSource_options_error(&NSString::from_str(SOURCE), None)
+                .map_err(|e| anyhow!("Metal kernel did not compile: {e}"))?;
+            let function = library
+                .newFunctionWithName(&NSString::from_str(KERNEL))
+                .context("Metal kernel entry point missing")?;
+            let pipeline = device
+                .newComputePipelineStateWithFunction_error(&function)
+                .map_err(|e| anyhow!("Metal pipeline: {e}"))?;
+            ensure!(
+                threadgroup <= pipeline.maxTotalThreadsPerThreadgroup(),
+                "--gpu-threadgroup {threadgroup} exceeds the device limit {}",
+                pipeline.maxTotalThreadsPerThreadgroup()
+            );
+            let working_set = device.recommendedMaxWorkingSetSize() as usize;
+            let scratch_bytes = hashes * HASH_BYTES;
+            ensure!(
+                scratch_bytes <= working_set / 2,
+                "--gpu-hashes {hashes} needs {} MiB of GPU memory; this Mac allows about {} MiB",
+                scratch_bytes >> 20,
+                (working_set / 2) >> 20
+            );
+            let buffer = |bytes: usize, options: MTLResourceOptions| {
+                device
+                    .newBufferWithLength_options(bytes, options)
+                    .context("Metal buffer allocation failed")
+            };
+            let scratch = buffer(scratch_bytes, MTLResourceOptions::StorageModePrivate)?;
+            let slot = || -> Result<Slot> {
+                Ok(Slot {
+                    input: buffer(hashes * 32 * 4, MTLResourceOptions::StorageModeShared)?,
+                    output: buffer(hashes * 16 * 4, MTLResourceOptions::StorageModeShared)?,
+                    pending: None,
+                })
+            };
+            Ok(Self {
+                queue: device.newCommandQueue().context("Metal command queue")?,
+                pipeline,
+                scratch,
+                slots: [slot()?, slot()?],
+                hashes,
+                threadgroup,
             })
-        };
-        Ok(Self {
-            queue: device.newCommandQueue().context("Metal command queue")?,
-            pipeline,
-            scratch,
-            slots: [slot()?, slot()?],
-            hashes,
-            threadgroup,
         })
     }
 
@@ -146,62 +153,64 @@ impl Gpu {
     /// Queue a batch (`inputs`: B's first 32 words per hash) in `slot`. Batches
     /// share the scratch; Metal's hazard tracking runs them one after the other.
     pub fn submit(&mut self, slot: usize, inputs: &[[u32; 32]]) -> Result<()> {
-        let count = inputs.len();
-        ensure!(count >= 1 && count <= self.hashes, "GPU batch size {count}");
-        let slot = &mut self.slots[slot];
-        ensure!(slot.pending.is_none(), "GPU slot still busy");
-        // SAFETY: `input` holds `hashes * 32` u32s (count <= hashes) in shared
-        // storage, and no batch using this slot is in flight (checked above).
-        unsafe {
-            let words = slot.input.contents().cast::<[u32; 32]>().as_ptr();
-            std::ptr::copy_nonoverlapping(inputs.as_ptr(), words, count);
-        }
-        let command = self.queue.commandBuffer().context("Metal command buffer")?;
-        let encoder = command
-            .computeCommandEncoder()
-            .context("Metal compute encoder")?;
-        encoder.setComputePipelineState(&self.pipeline);
-        let n = count as u32;
-        // SAFETY: the buffers outlive the command buffer (held by self and retained
-        // by Metal); setBytes copies the 4-byte count immediately.
-        unsafe {
-            encoder.setBuffer_offset_atIndex(Some(&slot.input), 0, 0);
-            encoder.setBuffer_offset_atIndex(Some(&slot.output), 0, 1);
-            encoder.setBuffer_offset_atIndex(Some(&self.scratch), 0, 2);
-            encoder.setBytes_length_atIndex(NonNull::from(&n).cast(), 4, 3);
-        }
-        encoder.dispatchThreads_threadsPerThreadgroup(
-            MTLSize {
-                width: count * LANES,
-                height: 1,
-                depth: 1,
-            },
-            MTLSize {
-                width: self.threadgroup,
-                height: 1,
-                depth: 1,
-            },
-        );
-        encoder.endEncoding();
-        let (completed, completion) = mpsc::sync_channel(1);
-        let handler =
-            block2::RcBlock::new(move |_: NonNull<ProtocolObject<dyn MTLCommandBuffer>>| {
-                let _ = completed.try_send(());
+        autoreleasepool(|_| {
+            let count = inputs.len();
+            ensure!(count >= 1 && count <= self.hashes, "GPU batch size {count}");
+            let slot = &mut self.slots[slot];
+            ensure!(slot.pending.is_none(), "GPU slot still busy");
+            // SAFETY: `input` holds `hashes * 32` u32s (count <= hashes) in shared
+            // storage, and no batch using this slot is in flight (checked above).
+            unsafe {
+                let words = slot.input.contents().cast::<[u32; 32]>().as_ptr();
+                std::ptr::copy_nonoverlapping(inputs.as_ptr(), words, count);
+            }
+            let command = self.queue.commandBuffer().context("Metal command buffer")?;
+            let encoder = command
+                .computeCommandEncoder()
+                .context("Metal compute encoder")?;
+            encoder.setComputePipelineState(&self.pipeline);
+            let n = count as u32;
+            // SAFETY: the buffers outlive the command buffer (held by self and retained
+            // by Metal); setBytes copies the 4-byte count immediately.
+            unsafe {
+                encoder.setBuffer_offset_atIndex(Some(&slot.input), 0, 0);
+                encoder.setBuffer_offset_atIndex(Some(&slot.output), 0, 1);
+                encoder.setBuffer_offset_atIndex(Some(&self.scratch), 0, 2);
+                encoder.setBytes_length_atIndex(NonNull::from(&n).cast(), 4, 3);
+            }
+            encoder.dispatchThreads_threadsPerThreadgroup(
+                MTLSize {
+                    width: count * LANES,
+                    height: 1,
+                    depth: 1,
+                },
+                MTLSize {
+                    width: self.threadgroup,
+                    height: 1,
+                    depth: 1,
+                },
+            );
+            encoder.endEncoding();
+            let (completed, completion) = mpsc::sync_channel(1);
+            let handler =
+                block2::RcBlock::new(move |_: NonNull<ProtocolObject<dyn MTLCommandBuffer>>| {
+                    let _ = completed.try_send(());
+                });
+            // SAFETY: Metal copies the valid block. Its only capture is an owned,
+            // thread-safe sender; it never accesses Gpu or a buffer's raw memory.
+            unsafe {
+                command.addCompletedHandler(block2::RcBlock::as_ptr(&handler));
+            }
+            let deadline = Instant::now() + BATCH_TIMEOUT;
+            command.commit();
+            slot.pending = Some(Pending {
+                command,
+                count,
+                completed: completion,
+                deadline,
             });
-        // SAFETY: Metal copies the valid block. Its only capture is an owned,
-        // thread-safe sender; it never accesses Gpu or a buffer's raw memory.
-        unsafe {
-            command.addCompletedHandler(block2::RcBlock::as_ptr(&handler));
-        }
-        let deadline = Instant::now() + BATCH_TIMEOUT;
-        command.commit();
-        slot.pending = Some(Pending {
-            command,
-            count,
-            completed: completion,
-            deadline,
-        });
-        Ok(())
+            Ok(())
+        })
     }
 
     pub fn busy(&self, slot: usize) -> bool {
@@ -210,30 +219,40 @@ impl Gpu {
 
     /// Wait for the batch in `slot`: B's last 16 words per hash.
     pub fn wait(&mut self, slot: usize) -> Result<Vec<[u32; 16]>> {
-        let slot = &mut self.slots[slot];
-        let pending = slot.pending.as_ref().context("GPU slot is idle")?;
-        // Do not clear pending on timeout: a caller must never reuse input or
-        // read output while the GPU could still access them. The worker exits;
-        // Metal's retained command references keep its resources alive.
-        pending
-            .completed
-            .recv_timeout(pending.deadline.saturating_duration_since(Instant::now()))
-            .context("GPU batch did not complete within 10 seconds")?;
-        let Pending { command, count, .. } = slot.pending.take().unwrap();
-        if command.status() != MTLCommandBufferStatus::Completed {
-            let reason = command
-                .error()
-                .map_or_else(|| "unknown".to_string(), |e| e.to_string());
-            return Err(anyhow!("GPU batch failed: {reason}"));
-        }
-        let mut out = vec![[0u32; 16]; count];
-        // SAFETY: the batch completed, so the GPU no longer writes `output`, which
-        // holds `hashes * 16` u32s (count <= hashes).
-        unsafe {
-            let words = slot.output.contents().cast::<[u32; 16]>().as_ptr();
-            std::ptr::copy_nonoverlapping(words, out.as_mut_ptr(), count);
-        }
+        let mut out = Vec::new();
+        self.wait_into(slot, &mut out)?;
         Ok(out)
+    }
+
+    /// Reuse the caller's output allocation across batches. On failure the
+    /// caller must ignore its previous contents; an unfinished slot stays busy.
+    pub fn wait_into(&mut self, slot: usize, out: &mut Vec<[u32; 16]>) -> Result<()> {
+        autoreleasepool(|_| {
+            let slot = &mut self.slots[slot];
+            let pending = slot.pending.as_ref().context("GPU slot is idle")?;
+            // Do not clear pending on timeout: a caller must never reuse input or
+            // read output while the GPU could still access them. The worker exits;
+            // Metal's retained command references keep its resources alive.
+            pending
+                .completed
+                .recv_timeout(pending.deadline.saturating_duration_since(Instant::now()))
+                .context("GPU batch did not complete within 10 seconds")?;
+            let Pending { command, count, .. } = slot.pending.take().unwrap();
+            if command.status() != MTLCommandBufferStatus::Completed {
+                let reason = command
+                    .error()
+                    .map_or_else(|| "unknown".to_string(), |e| e.to_string());
+                return Err(anyhow!("GPU batch failed: {reason}"));
+            }
+            out.resize(count, [0u32; 16]);
+            // SAFETY: the batch completed, so the GPU no longer writes `output`, which
+            // holds `hashes * 16` u32s (count <= hashes).
+            unsafe {
+                let words = slot.output.contents().cast::<[u32; 16]>().as_ptr();
+                std::ptr::copy_nonoverlapping(words, out.as_mut_ptr(), count);
+            }
+            Ok(())
+        })
     }
 
     /// Hash `headers` (one batch) on the GPU: full digests.
