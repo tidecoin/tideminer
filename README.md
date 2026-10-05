@@ -24,7 +24,7 @@ binary's `self-test` before replacing an existing installation. They install wit
 administrator rights (`~/.local/bin`, or `%LOCALAPPDATA%\Programs\tideminer` added to
 the user PATH) and can be re-run to update. On Linux/macOS, a running miner keeps
 using the old binary until you restart it with your usual settings. On Windows,
-stop the miner before updating, then start it again. `TIDEMINER_VERSION=v0.2.0` pins a release;
+stop the miner before updating, then start it again. `TIDEMINER_VERSION=v0.2.1` pins a release;
 `TIDEMINER_INSTALL_DIR` changes the target. The download URLs need the releases to be
 public.
 
