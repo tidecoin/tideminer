@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag like v0.2.1 to build every platform and publish a GitHub Release with
+# Push a tag like v0.2.2 to build every platform and publish a GitHub Release with
 # the archives, SHA256SUMS and the install scripts. workflow_dispatch builds the same
 # artifacts without publishing (download them from the run).
 on:

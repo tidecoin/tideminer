@@ -7,7 +7,7 @@
 # PATH (no administrator rights). Re-run to update.
 #
 # Environment:
-#   TIDEMINER_VERSION      release tag to install, e.g. v0.2.1 (default: latest)
+#   TIDEMINER_VERSION      release tag to install, e.g. v0.2.2 (default: latest)
 #   TIDEMINER_INSTALL_DIR  where to put tideminer.exe
 #   TIDEMINER_REPO         GitHub owner/repo that publishes releases
 #   TIDEMINER_BASE_URL     download from this URL instead of GitHub Releases

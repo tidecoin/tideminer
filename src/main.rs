@@ -625,9 +625,15 @@ fn tune_command(
             .unwrap_or_else(|| "(not expressible as flags; use --autotune)".into()))
     };
     out.raw(format!(
-        "  fastest as flags:        {}",
+        "  chosen as flags:         {}",
         flags(chosen.recipe)?
     ));
+    if outcome.chosen != 0 {
+        out.raw(format!(
+            "  measured fastest flags:  {}",
+            flags(outcome.rows[0].recipe)?
+        ));
+    }
     if let Some(e) = outcome.efficient {
         out.raw(format!(
             "  most efficient as flags: {}",
@@ -635,7 +641,7 @@ fn tune_command(
         ));
     }
     if !quick && !no_save && !outcome.trustworthy() {
-        out.raw("not saved: other programs disturbed the measurements");
+        out.raw("not saved: comparison inconclusive; existing saved tuning left unchanged");
     } else if !quick && !no_save {
         let path = tune::save(tune::Saved::new(&topology, &limits, &outcome))?;
         out.raw(format!(

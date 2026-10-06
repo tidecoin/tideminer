@@ -24,7 +24,7 @@ binary's `self-test` before replacing an existing installation. They install wit
 administrator rights (`~/.local/bin`, or `%LOCALAPPDATA%\Programs\tideminer` added to
 the user PATH) and can be re-run to update. On Linux/macOS, a running miner keeps
 using the old binary until you restart it with your usual settings. On Windows,
-stop the miner before updating, then start it again. `TIDEMINER_VERSION=v0.2.1` pins a release;
+stop the miner before updating, then start it again. `TIDEMINER_VERSION=v0.2.2` pins a release;
 `TIDEMINER_INSTALL_DIR` changes the target. The download URLs need the releases to be
 public.
 
@@ -157,16 +157,21 @@ cpuminer-style, no subcommand needed (`tideminer mine ...` works too):
   `--cpus` and `--lanes`, it compares the configurations that differ (lanes per core,
   a P core's SMT sibling versus a second lane, E cores versus SMT siblings) for
   ~15-40 s before connecting, in mirrored rounds, and prints a ranked table. A
-  challenger replaces the rule-based choice only if it wins by more than the measured
-  noise and no other program loaded the measured CPUs.
+  challenger replaces the rule-based choice only if it wins every round by more
+  than 3%. Estimated CPU interference (including interrupts and VM steal time)
+  strengthens the check: the challenger's slowest round must beat the default's
+  fastest by the same margin. Interference on other candidates does not veto it.
 - `tideminer tune [--minutes 5]` is the longer offline version: it also varies the
   thread count (P cores, SMT siblings, E cores per L2 cluster), screens every
   configuration briefly, then measures the finalists in longer mirrored rounds after
   a 30 s warm-up. It prints H/s, spread, temperature and, where readable, watts and
   hashes per joule (`sudo tideminer tune` on Linux, whose CPU energy counter is
   root-only; unplugged laptops fall back to battery discharge), the fastest and the
-  most efficient configuration as mining flags, and saves the fastest to
-  `~/.cache/tideminer/tune.json`. Mining with the same machine and CPU/GPU limits
+  most efficient configuration as mining flags. The longer comparison uses a 1.5%
+  margin and saves the fastest challenger that reliably beats the default, or the
+  default if it reliably beats all challengers, to `~/.cache/tideminer/tune.json`.
+  Inconclusive runs use the default without overwriting saved tuning.
+  Mining with the same machine and CPU/GPU limits
   then uses it automatically, without measuring or needing `--autotune`.
   Profiles are miner-version-specific; after an update, run `tune` again or use
   `--autotune` for a quick comparison.

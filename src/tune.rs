@@ -8,10 +8,10 @@
 //! turbo window, reads power where the OS allows, and saves its winner for
 //! normal mining startup. `--autotune` measures only when no matching saved result exists.
 //!
-//! Method: candidates run in mirrored rounds (A B C, C B A, ...), so a steady
-//! thermal drift biases every mean equally. A challenger replaces the rule-based
-//! baseline only when it beats it by more than the round-to-round noise measured in
-//! the same run; otherwise the baseline stays.
+//! Method: candidates run in mirrored rounds (A B C, C B A, ...) to reduce order
+//! bias. A challenger must beat the baseline by a useful margin in every round.
+//! When either has CPU interference, its slowest round must also beat the
+//! baseline's fastest. Inconclusive runs keep the baseline without saving it.
 use crate::benchmark::synthetic_work;
 use crate::engine::{self, Engine, Layout, Placement, Sink, WorkerEvent};
 use crate::report::{Color, Reporter, Sensors, format_duration, format_rate, timestamp};
@@ -412,7 +412,7 @@ struct Sample {
     rate: f64,
     watts: Option<f64>,
     temperature: Option<f64>,
-    /// Share of the measured CPUs' busy time used by other programs.
+    /// Estimated share of busy/steal time not accounted for by this process.
     foreign: Option<f64>,
 }
 
@@ -448,7 +448,9 @@ fn own_ticks() -> Option<u64> {
     Some(fields.get(11)?.parse::<u64>().ok()? + fields.get(12)?.parse::<u64>().ok()?)
 }
 
-/// Other programs' share of the busy time on `cpus` between two readings.
+/// Estimated CPU interference between two readings. Includes interrupts and VM
+/// steal time, not just other applications. This is a share of accounted busy/
+/// steal time, not wall-clock CPU capacity; container accounting may differ too.
 fn foreign_share(start: Option<(u64, u64)>, cpus: &[usize]) -> Option<f64> {
     let (busy0, own0) = start?;
     let busy = busy_ticks(cpus)?.checked_sub(busy0)?;
@@ -576,14 +578,13 @@ pub struct Row {
     pub spread: f64,
     pub watts: Option<f64>,
     pub temperature: Option<f64>,
-    /// Largest share of the measured CPUs taken by other programs in any round.
+    /// Largest estimated CPU interference in any round (see `foreign_share`).
     pub foreign: Option<f64>,
     /// Measured only in the short screening pass, not in the final rounds.
     pub screened_out: bool,
 }
 
-/// Other programs using more than this share of the measured CPUs make a result
-/// suspect.
+/// Above this estimated interference, require separated measurement ranges.
 pub const DISTURBED: f64 = 0.03;
 
 impl Row {
@@ -593,6 +594,33 @@ impl Row {
 
     pub fn hashes_per_joule(&self) -> Option<f64> {
         self.watts.filter(|w| *w > 0.0).map(|w| self.rate / w)
+    }
+
+    fn valid_rounds(&self) -> bool {
+        self.rates.len() >= 2 && self.rates.iter().all(|r| r.is_finite() && *r > 0.0)
+    }
+
+    /// Compare matching rounds, so a common change in host speed does not count
+    /// as uncertainty in the relative gain. These are sequential measurements,
+    /// not independent statistical samples or a formal confidence interval.
+    fn reliably_beats(&self, other: &Self, margin: f64) -> bool {
+        if !self.valid_rounds()
+            || !other.valid_rounds()
+            || self.rates.len() != other.rates.len()
+            || !self
+                .rates
+                .iter()
+                .zip(&other.rates)
+                .all(|(a, b)| *a > *b * (1.0 + margin))
+        {
+            return false;
+        }
+        if self.disturbed() || other.disturbed() {
+            let slowest = self.rates.iter().copied().fold(f64::INFINITY, f64::min);
+            let fastest = other.rates.iter().copied().fold(0.0, f64::max);
+            return slowest > fastest * (1.0 + margin);
+        }
+        true
     }
 }
 
@@ -656,12 +684,11 @@ fn run_rounds(
 pub enum Verdict {
     /// The rule-based baseline measured fastest by a clear margin.
     Confirmed,
-    /// The fastest was within noise of the baseline, so the baseline stays.
+    /// Repeated measurements were inconclusive, so the baseline stays unsaved.
     Kept,
-    /// A challenger beat the baseline by more than the noise.
+    /// A challenger reliably beat the baseline in repeated measurements.
     Switched,
-    /// A challenger measured faster, but other programs loaded the measured CPUs,
-    /// so the baseline stays.
+    /// Interference and inconclusive measurements; the baseline stays unsaved.
     Disturbed,
 }
 
@@ -669,9 +696,9 @@ pub enum Verdict {
 pub struct Outcome {
     /// Sorted fastest first.
     pub rows: Vec<Row>,
-    /// Median round-to-round spread.
+    /// Median round-to-round spread, descriptive only (not a decision threshold).
     pub noise: f64,
-    /// Gain a challenger needs over the baseline.
+    /// Minimum useful gain required in every comparison round.
     pub margin: f64,
     pub chosen: usize,
     pub verdict: Verdict,
@@ -686,20 +713,12 @@ pub struct Outcome {
 }
 
 impl Outcome {
-    /// No other program took a noticeable share of the measured CPUs.
+    /// The repeated comparison supports saving the selected configuration.
     pub fn trustworthy(&self) -> bool {
-        self.foreign().is_none_or(|f| f <= DISTURBED)
+        matches!(self.verdict, Verdict::Confirmed | Verdict::Switched)
     }
 
-    /// Never switch away from the rules on disturbed measurements.
-    fn distrust_disturbed(&mut self) {
-        if !self.trustworthy() && self.verdict == Verdict::Switched {
-            self.chosen = self.rows.iter().position(|r| r.baseline).unwrap_or(0);
-            self.verdict = Verdict::Disturbed;
-        }
-    }
-
-    /// Largest share of the measured CPUs other programs took during the run.
+    /// Largest estimated CPU interference among the final measurements.
     pub fn foreign(&self) -> Option<f64> {
         self.rows.iter().filter_map(|r| r.foreign).reduce(f64::max)
     }
@@ -717,12 +736,13 @@ fn decide(mut rows: Vec<Row>, min_margin: f64, power: Option<String>, seconds: f
     let mut spreads: Vec<f64> = rows.iter().map(|r| r.spread).collect();
     spreads.sort_by(f64::total_cmp);
     let noise = spreads.get(spreads.len() / 2).copied().unwrap_or(0.0);
-    let margin = min_margin.max(noise);
+    let margin = min_margin;
     let base = rows.iter().position(|r| r.baseline).unwrap_or(0);
     let (chosen, verdict) = if base == 0 {
-        let clear = rows
-            .get(1)
-            .is_none_or(|second| rows[0].rate > second.rate * (1.0 + margin));
+        let clear = rows[0].valid_rounds()
+            && rows[1..]
+                .iter()
+                .all(|other| rows[0].reliably_beats(other, margin));
         (
             0,
             if clear {
@@ -731,10 +751,22 @@ fn decide(mut rows: Vec<Row>, min_margin: f64, power: Option<String>, seconds: f
                 Verdict::Kept
             },
         )
-    } else if rows[0].rate > rows[base].rate * (1.0 + margin) {
-        (0, Verdict::Switched)
+    } else if let Some(winner) = rows
+        .iter()
+        .position(|row| row.reliably_beats(&rows[base], margin))
+    {
+        // A one-off spike in the fastest mean must not hide a different
+        // challenger whose improvement is repeatable.
+        (winner, Verdict::Switched)
     } else {
-        (base, Verdict::Kept)
+        (
+            base,
+            if rows[0].disturbed() || rows[base].disturbed() {
+                Verdict::Disturbed
+            } else {
+                Verdict::Kept
+            },
+        )
     };
     let efficient = rows
         .iter()
@@ -805,8 +837,7 @@ pub fn quick(topology: &Topology, limits: &Limits, nice: Option<i32>) -> Result<
     let baseline = candidates[0].placements.clone();
     probe.measure(&baseline, QUICK_WARMUP, 0.1)?;
     let rows = run_rounds(&probe, &candidates, &baseline, QUICK, &mut |_, _, _, _| {})?;
-    let mut outcome = decide(rows, QUICK_MARGIN, None, started.elapsed().as_secs_f64());
-    outcome.distrust_disturbed();
+    let outcome = decide(rows, QUICK_MARGIN, None, started.elapsed().as_secs_f64());
     Ok(Some(outcome))
 }
 
@@ -938,7 +969,6 @@ pub fn offline(
         })
         .collect();
     outcome.screened.sort_by(|a, b| b.rate.total_cmp(&a.rate));
-    outcome.distrust_disturbed();
     Ok(outcome)
 }
 
@@ -1014,29 +1044,33 @@ pub fn print_outcome(out: &Reporter, outcome: &Outcome, indent: &str) {
     }
     if let Some(foreign) = outcome.foreign().filter(|f| *f > DISTURBED) {
         out.raw(format!(
-            "{indent}{} other programs used up to {:.0}% of the measured CPUs (rows marked !); \
-             rerun on an idle machine for trustworthy numbers",
+            "{indent}{} estimated CPU interference reached {:.0}% of accounted busy/steal time \
+             (rows marked !; includes interrupts and VM steal time); \
+             affected comparisons require separated speed ranges",
             out.paint(Color::Yellow, "warning:"),
             foreign * 100.0
         ));
     }
     let chosen = &outcome.rows[outcome.chosen];
-    let noise = format!("noise ±{:.1}%", outcome.noise * 50.0);
     let decision = match outcome.verdict {
         Verdict::Switched => format!(
-            "{}: {:+.1}% over the rules ({noise})",
+            "{}: {:+.1}% over the rules (won every round by more than {:.1}%)",
             chosen.label,
-            (chosen.rate / base - 1.0) * 100.0
+            (chosen.rate / base - 1.0) * 100.0,
+            outcome.margin * 100.0
         ),
-        Verdict::Confirmed => format!("{} (the rules' choice, fastest; {noise})", chosen.label),
+        Verdict::Confirmed => format!(
+            "{} (the rules' choice, confirmed by repeated measurements)",
+            chosen.label
+        ),
         Verdict::Disturbed => format!(
-            "{} (the rules' choice; {} measured {:+.1}%, but other programs disturbed the run)",
+            "{} (fallback; {} measured {:+.1}%, but the comparison was inconclusive under CPU interference)",
             chosen.label,
             outcome.rows[0].label,
             (outcome.rows[0].rate / base - 1.0) * 100.0
         ),
         Verdict::Kept => format!(
-            "{} (the rules' choice; the fastest was within {:.1}%, not a clear win)",
+            "{} (fallback; repeated comparisons did not establish a winner with a {:.1}% margin)",
             chosen.label,
             outcome.margin * 100.0
         ),
@@ -1557,16 +1591,97 @@ mod tests {
     }
 
     #[test]
-    fn disturbed_runs_keep_the_rules() {
-        let mut rules = row("rules", true, &[100.0, 101.0]);
-        let mut faster = row("b", false, &[120.0, 121.0]);
-        rules.foreign = Some(0.01);
-        faster.foreign = Some(0.25);
-        let mut outcome = decide(vec![rules, faster], 0.03, None, 1.0);
+    fn epyc_two_lanes_win_and_can_be_saved_despite_interference() {
+        // Regression: a real EPYC 9V74 run used to discard this 12.9% gain.
+        let mut rules = row("1 lane", true, &[5880.0, 6060.0, 5980.0]);
+        let mut faster = row("2 lanes", false, &[7050.0, 6800.0, 6380.0]);
+        rules.foreign = Some(0.11);
+        faster.foreign = Some(0.11);
+        let outcome = decide(vec![rules, faster], OFFLINE_MARGIN, None, 1.0);
         assert_eq!(outcome.verdict, Verdict::Switched);
-        outcome.distrust_disturbed();
+        assert_eq!(outcome.rows[outcome.chosen].label, "2 lanes");
+        assert!(outcome.trustworthy());
+        let saved = Saved::new(&hybrid(), &free(), &outcome);
+        assert_eq!(saved.speed.label, "2 lanes");
+    }
+
+    #[test]
+    fn interference_requires_separated_ranges_for_the_compared_candidates() {
+        let rules = row("rules", true, &[90.0, 100.0, 110.0]);
+        let faster = row("b", false, &[100.0, 110.0, 120.0]);
+        for disturbed_index in [0, 1] {
+            let mut rows = vec![rules.clone(), faster.clone()];
+            rows[disturbed_index].foreign = Some(0.11);
+            let outcome = decide(rows, OFFLINE_MARGIN, None, 1.0);
+            assert_eq!(outcome.verdict, Verdict::Disturbed);
+            assert!(outcome.rows[outcome.chosen].baseline);
+            assert!(!outcome.trustworthy());
+        }
+        // Interference on an unrelated, slower candidate changes neither the
+        // evidence comparing the winner and baseline nor permission to save.
+        let mut slower = row("slow", false, &[40.0, 80.0, 60.0]);
+        slower.foreign = Some(0.50);
+        let outcome = decide(vec![rules, faster, slower], OFFLINE_MARGIN, None, 1.0);
+        assert_eq!(outcome.verdict, Verdict::Switched);
+        assert!(outcome.trustworthy());
+    }
+
+    #[test]
+    fn a_large_mean_gain_cannot_hide_a_losing_round() {
+        for interference in [None, Some(0.11)] {
+            let rules = row("rules", true, &[100.0, 100.0, 100.0]);
+            let mut faster = row("b", false, &[150.0, 140.0, 99.0]);
+            faster.foreign = interference;
+            let outcome = decide(vec![rules, faster], OFFLINE_MARGIN, None, 1.0);
+            assert!(outcome.rows[outcome.chosen].baseline);
+            assert!(!outcome.trustworthy());
+        }
+    }
+
+    #[test]
+    fn a_noisy_fastest_mean_does_not_hide_a_repeatable_improvement() {
+        let outcome = decide(
+            vec![
+                row("rules", true, &[100.0, 100.0, 100.0]),
+                row("spike", false, &[200.0, 200.0, 99.0]),
+                row("steady", false, &[120.0, 121.0, 119.0]),
+            ],
+            OFFLINE_MARGIN,
+            None,
+            1.0,
+        );
+        assert_eq!(outcome.rows[0].label, "spike");
+        assert_eq!(outcome.rows[outcome.chosen].label, "steady");
+        assert_eq!(outcome.verdict, Verdict::Switched);
+        assert!(outcome.trustworthy());
+    }
+
+    #[test]
+    fn interference_does_not_prevent_confirming_the_baseline() {
+        let mut rules = row("rules", true, &[120.0, 121.0, 119.0]);
+        rules.foreign = Some(0.25);
+        let outcome = decide(
+            vec![rules, row("b", false, &[100.0, 101.0, 99.0])],
+            OFFLINE_MARGIN,
+            None,
+            1.0,
+        );
+        assert_eq!(outcome.verdict, Verdict::Confirmed);
+        assert!(outcome.trustworthy());
+    }
+
+    #[test]
+    fn small_gaps_under_interference_stay_inconclusive() {
+        let mut faster = row("b", false, &[104.0, 106.0]);
+        faster.foreign = Some(0.11);
+        let outcome = decide(
+            vec![row("rules", true, &[100.0, 103.0]), faster],
+            OFFLINE_MARGIN,
+            None,
+            1.0,
+        );
+        // Every paired round clears 1.5%, but 104 / 103 does not.
         assert_eq!(outcome.verdict, Verdict::Disturbed);
-        assert_eq!(outcome.rows[outcome.chosen].label, "rules");
         assert!(!outcome.trustworthy());
     }
 
@@ -1578,7 +1693,7 @@ mod tests {
     }
 
     #[test]
-    fn a_challenger_must_beat_the_noise() {
+    fn a_challenger_must_win_every_round_by_the_minimum_margin() {
         let clear = decide(
             vec![
                 row("rules", true, &[100.0, 101.0]),
@@ -1601,8 +1716,9 @@ mod tests {
         );
         assert_eq!(close.verdict, Verdict::Kept);
         assert_eq!(close.rows[close.chosen].label, "rules");
-        // Noisy rounds raise the bar above the minimum margin.
-        let noisy = decide(
+        assert!(!close.trustworthy());
+        // Common drift is not uncertainty in the relative gain.
+        let drift = decide(
             vec![
                 row("rules", true, &[90.0, 110.0]),
                 row("b", false, &[98.0, 122.0]),
@@ -1611,7 +1727,8 @@ mod tests {
             None,
             1.0,
         );
-        assert_eq!(noisy.verdict, Verdict::Kept);
+        assert_eq!(drift.verdict, Verdict::Switched);
+        assert!(drift.trustworthy());
         let confirmed = decide(
             vec![
                 row("rules", true, &[130.0, 131.0]),
@@ -1622,6 +1739,37 @@ mod tests {
             1.0,
         );
         assert_eq!(confirmed.verdict, Verdict::Confirmed);
+        assert!(confirmed.trustworthy());
+    }
+
+    #[test]
+    fn insufficient_or_invalid_measurements_cannot_establish_a_winner() {
+        for rates in [
+            vec![],
+            vec![120.0],
+            vec![120.0, 0.0],
+            vec![120.0, f64::NAN],
+            vec![120.0, f64::INFINITY],
+            vec![120.0, -1.0],
+            vec![120.0, 120.0, 120.0],
+        ] {
+            let outcome = decide(
+                vec![row("rules", true, &[100.0, 100.0]), row("b", false, &rates)],
+                OFFLINE_MARGIN,
+                None,
+                1.0,
+            );
+            assert!(outcome.rows[outcome.chosen].baseline);
+            assert!(!outcome.trustworthy());
+        }
+        let fixed = decide(
+            vec![row("rules", true, &[100.0, 101.0, 100.0])],
+            OFFLINE_MARGIN,
+            None,
+            1.0,
+        );
+        assert_eq!(fixed.verdict, Verdict::Confirmed);
+        assert!(fixed.trustworthy());
     }
 
     #[test]
@@ -1683,7 +1831,10 @@ mod tests {
             owner: None,
         };
         let outcome = decide(
-            vec![row("rules", true, &[100.0]), row("b", false, &[130.0])],
+            vec![
+                row("rules", true, &[100.0, 101.0]),
+                row("b", false, &[130.0, 131.0]),
+            ],
             0.03,
             None,
             1.0,
